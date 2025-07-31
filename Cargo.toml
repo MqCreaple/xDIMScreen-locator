@@ -1,0 +1,15 @@
+[package]
+name = "xDIMScreen-locator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = "0.4.41"
+eframe = "0.31.1"
+egui = "0.31.1"
+egui-plotter = "0.4.0"
+env_logger = "0.11.8"
+json = "0.12.4"
+opencv = { version = "0.95.1", default-features = false, features = ["clang-runtime", "calib3d", "highgui", "videoio"] }
+plotters = "0.3.7"
+serde = "1.0.219"
