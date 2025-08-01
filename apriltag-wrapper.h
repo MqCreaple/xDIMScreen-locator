@@ -1,0 +1,16 @@
+#include "ext/apriltag/apriltag.h"
+
+#include "ext/apriltag/tag16h5.h"
+#include "ext/apriltag/tag25h9.h"
+#include "ext/apriltag/tag36h10.h"
+#include "ext/apriltag/tag36h11.h"
+#include "ext/apriltag/tagCircle21h7.h"
+#include "ext/apriltag/tagCircle49h12.h"
+#include "ext/apriltag/tagCustom48h12.h"
+#include "ext/apriltag/tagStandard41h12.h"
+#include "ext/apriltag/tagStandard52h13.h"
+
+#include "ext/apriltag/common/image_types.h"
+#include "ext/apriltag/common/image_u8.h"
+#include "ext/apriltag/common/image_u8x3.h"
+#include "ext/apriltag/common/image_u8x4.h"

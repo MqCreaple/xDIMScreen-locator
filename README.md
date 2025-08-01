@@ -2,6 +2,14 @@
 
 ## How to Install?
 
+### Clone this project
+
+```bash
+git clone https://github.com/MqCreaple/xDIMScreen-locator
+cd xDIMScreen-locator
+git submodule update --init --recursive
+```
+
 ### Install `opencv`
 
 Since this project uses the [`opencv`](https://docs.rs/opencv/latest/opencv/) package, you need to first install OpenCV on your computer. Please follow the documentation on opencv-rust: <https://github.com/twistedfall/opencv-rust/blob/master/INSTALL.md>.
@@ -23,16 +31,14 @@ cargo build
 
 If you encounter any problem related to OpenCV, please refer to the [troubleshooting page](https://github.com/twistedfall/opencv-rust/blob/master/TROUBLESHOOTING.md) at opencv-rust.
 
-### Install `apriltag`
-
-TODO
-
-### Build This Project
-
-Find a path to clone this project:
+### Build `apriltag`
 
 ```bash
-git clone _______
-cd xDIMScreen-locator
-cargo build
+cd ext/apriltag
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON_WRAPPER=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF ..
+cmake --build . --config Release
 ```
+
+After building the library, you need to add `ext/apriltag/build/Release/` to your operating system's `PATH` variable and then restart your computer, or the program might not find the correct dll to link.
