@@ -1,7 +1,7 @@
 use std::{error, ops::{Range, RangeInclusive}, thread, time::Duration};
 
 use egui::{CentralPanel, Visuals};
-use egui_plotter::{Chart, EguiBackend, MouseConfig};
+use egui_plotter::{Chart, MouseConfig};
 use plotters::{self, prelude::*};
 
 fn main() -> Result<(), Box<dyn error::Error>> {

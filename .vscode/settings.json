@@ -6,7 +6,9 @@
         "*.js.liquid": "liquid-javascript",
         "*.css.liquid": "liquid-css",
         "*.scss.liquid": "liquid-scss",
-        "*.h": "c"
+        "*.h": "c",
+        "*.hpp": "cpp",
+        "*.tagobj": "json"
     },
     "cmake.ignoreCMakeListsMissing": true
 }
