@@ -10,6 +10,7 @@ egui = "0.31.1"
 egui-plotter = "0.4.0"
 env_logger = "0.11.8"
 libc = "0.2.174"
+log = "0.4.27"
 map-macro = "0.3.0"
 nalgebra = "0.34.0"
 opencv = { version = "0.95.1", default-features = false, features = ["clang-runtime", "calib3d", "imgproc", "highgui", "videoio"] }

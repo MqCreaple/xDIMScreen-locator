@@ -4693,6 +4693,7 @@ dependencies = [
  "egui-plotter",
  "env_logger",
  "libc",
+ "log",
  "map-macro",
  "nalgebra",
  "opencv",
