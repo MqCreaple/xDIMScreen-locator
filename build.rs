@@ -10,6 +10,7 @@ fn main() {
         .header("apriltag-wrapper.h")
         .allowlist_file(r"^(.*apriltag\.h|.*apriltag_pose\.h|.*tag.*\.h|.*image_.*|.*homography\.h|.*zarray\.h)$")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        // .wrap_static_fns(true)             // TODO: generate bindings for inline functions
         .generate()
         .expect("Unable to generate bindings for apriltag!");
     

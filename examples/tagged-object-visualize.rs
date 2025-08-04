@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         // "BL".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 2),
         // "BR".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 3),
     };
-    let tagobj = TaggedObject::new_from_json("handheld screen", &tagobj_json, &id_mapping)?;
+    let tagobj = TaggedObject::new_from_json("wand", &tagobj_json, &id_mapping)?;
     println!("Successfully loaded tagged object from path {}", tagobj_file_path);
     for (id, tag) in tagobj.tags.iter() {
         println!();
@@ -71,7 +71,6 @@ impl VisualizeChart {
             .mouse(MouseConfig::enabled())
             .pitch(0.7)
             .yaw(0.7)
-            .scale(0.25)
             .builder_cb(Box::new(move |area, transform, _d| {
                 let x_axis = -5..=5;
                 let y_axis = -5..=5;
@@ -83,7 +82,7 @@ impl VisualizeChart {
                 chart.with_projection(|mut pb| {
                     pb.yaw = transform.yaw;
                     pb.pitch = transform.pitch;
-                    pb.scale = transform.scale;
+                    pb.scale = transform.zoom;
                     pb.into_matrix()
                 });
 

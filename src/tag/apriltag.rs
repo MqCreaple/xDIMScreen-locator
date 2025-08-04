@@ -1,7 +1,9 @@
+use std::ffi::CStr;
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use opencv::prelude::*;
-use opencv::core::Vec2d;
+
+extern crate nalgebra as na;
 
 use crate::tag::apriltag::apriltag_binding::*;
 
@@ -51,7 +53,7 @@ impl TryFrom<&str> for ApriltagFamily {
 
 /// A wrapper of the C type `apriltag_family_t` that supports memory allocation and deallocation
 pub struct ApriltagFamilyType {
-    c_type: *mut apriltag_binding::apriltag_family_t,
+    pub c_type: *mut apriltag_binding::apriltag_family_t,
     family: ApriltagFamily,
 }
 
@@ -137,6 +139,12 @@ impl ApriltagDetection {
         unsafe { (*self.0).id as i32 }
     }
 
+    pub fn family(&self) -> Result<ApriltagFamily, Box<dyn std::error::Error>> {
+        let name = unsafe { CStr::from_ptr((*(*self.0).family).name) }.to_str()?;
+        let family = ApriltagFamily::try_from(name)?;
+        Ok(family)
+    }
+
     pub fn hamming(&self) -> i32 {
         unsafe { (*self.0).hamming as i32 }
     }
@@ -145,16 +153,16 @@ impl ApriltagDetection {
         unsafe { (*self.0).decision_margin }
     }
 
-    pub fn homography(&self) -> Mat {
-        todo!("Conversion from apriltag::Matd to opnecv::Mat is not yet implemented")
+    pub fn homography(&self) -> na::Matrix3<f64> {
+        todo!("Conversion from apriltag::Matd to nalgebra::Matrix3 is not yet implemented")
     }
 
-    pub fn center(&self) -> Vec2d {
-        Vec2d::from_array(unsafe { (*self.0).c })
+    pub fn center(&self) -> na::Vector2<f64> {
+        unsafe { (*self.0).c.into() }
     }
 
-    pub fn corners(&self) -> [Vec2d; 4] {
-        std::array::from_fn(|i| Vec2d::from_array(unsafe { (*self.0).p[i] }))
+    pub fn corners(&self) -> [na::Vector2<f64>; 4] {
+        std::array::from_fn(|i| unsafe { (*self.0).p[i].into() })
     }
 }
 

@@ -38,8 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let end_pt = detection.corners()[(i + 1) % 4];
                 imgproc::line(
                     &mut frame,
-                    Point::new(start_pt.0[0].round() as i32, start_pt.0[1].round() as i32),
-                    Point::new(end_pt.0[0].round() as i32, end_pt.0[1].round() as i32),
+                    Point::new(start_pt.x.round() as i32, start_pt.y.round() as i32),
+                    Point::new(end_pt.x.round() as i32, end_pt.y.round() as i32),
                     Scalar::new(45., 44., 233., 0.),
                     2,
                     imgproc::LINE_8,

@@ -30,7 +30,6 @@ impl DemoChart {
             .mouse(MouseConfig::enabled())
             .pitch(0.7)
             .yaw(0.7)
-            .scale(0.75)
             .builder_cb(Box::new(|area, transform, _d| {
 
                 let x_axis = -5..=5;
@@ -44,7 +43,7 @@ impl DemoChart {
                 chart.with_projection(|mut pb| {
                     pb.yaw = transform.yaw;
                     pb.pitch = transform.pitch;
-                    pb.scale = transform.scale;
+                    pb.scale = transform.zoom;
                     pb.into_matrix()
                 });
 
