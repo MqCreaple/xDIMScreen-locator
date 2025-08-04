@@ -1,15 +1,15 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 
-use opencv::prelude::*;
 use opencv::calib3d;
+use opencv::prelude::*;
 
 extern crate nalgebra as na;
 
 use crate::camera::CameraProperty;
 use crate::tag::apriltag;
-use crate::tag::tagged_object::{TagIndex, TagLocation, TaggedObject};
 use crate::tag::error::ConflictingTagError;
+use crate::tag::tagged_object::{TagIndex, TagLocation, TaggedObject};
 
 pub struct TaggedObjectLocator<'a> {
     /// Camera matrix
@@ -36,25 +36,27 @@ impl<'a> TaggedObjectLocator<'a> {
         let this_name = &tagobj.name;
         for (tag_index, _) in &tagobj.tags {
             if let Some((registry_index, _)) = self.tag_map.get(tag_index) {
-                return Err(
-                    ConflictingTagError::new(
-                        *tag_index,
-                        unsafe { self.registry.get_unchecked(*registry_index).name.clone() },
-                        this_name.clone(),
-                    )
-                );
+                return Err(ConflictingTagError::new(
+                    *tag_index,
+                    unsafe { self.registry.get_unchecked(*registry_index).name.clone() },
+                    this_name.clone(),
+                ));
             }
         }
         let this_registry_index = self.registry.len();
         self.registry.push(tagobj);
         for (tag_index, tag_location) in &tagobj.tags {
             // It is guaranteed that at this point, there's no conflict in tag indices
-            self.tag_map.insert(*tag_index, (this_registry_index, tag_location.clone()));
+            self.tag_map
+                .insert(*tag_index, (this_registry_index, tag_location.clone()));
         }
         Ok(())
     }
 
-    fn locate_single_object<'b, 'c>(&self, detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)]) -> Result<na::Isometry3<f64>, Box<dyn std::error::Error>> {
+    fn locate_single_object<'b, 'c>(
+        &self,
+        detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)],
+    ) -> Result<na::Isometry3<f64>, Box<dyn std::error::Error>> {
         const TAG_CORNERS: [na::Point3<f64>; 4] = [
             na::Point3::new(-1.0, 1.0, 0.0),
             na::Point3::new(1.0, 1.0, 0.0),
@@ -62,7 +64,7 @@ impl<'a> TaggedObjectLocator<'a> {
             na::Point3::new(-1.0, -1.0, 0.0),
         ];
 
-        let mut object_points_data = Vec::<f64>::with_capacity(detections.len() * 12);  // `detections.len()` (tags) * `4` (vertices / tag) * `3` (coordinates / vertex)
+        let mut object_points_data = Vec::<f64>::with_capacity(detections.len() * 12); // `detections.len()` (tags) * `4` (vertices / tag) * `3` (coordinates / vertex)
         let mut image_points_data = Vec::<f64>::with_capacity(detections.len() * 8);
         for (detection, tag_location) in detections {
             for (i, corner) in detection.corners().iter().enumerate() {
@@ -75,14 +77,8 @@ impl<'a> TaggedObjectLocator<'a> {
             }
         }
         let points_cnt = (detections.len() * 4) as i32;
-        let object_points = Mat::new_rows_cols_with_data(
-            points_cnt, 3,
-            &object_points_data,
-        )?;
-        let image_points = Mat::new_rows_cols_with_data(
-            points_cnt, 2,
-            &image_points_data,
-        )?;
+        let object_points = Mat::new_rows_cols_with_data(points_cnt, 3, &object_points_data)?;
+        let image_points = Mat::new_rows_cols_with_data(points_cnt, 2, &image_points_data)?;
         let mut rvec = Mat::default();
         let mut tvec = Mat::default();
 
@@ -98,12 +94,12 @@ impl<'a> TaggedObjectLocator<'a> {
         )?;
 
         let rvec = na::Vector3::new(
-            *rvec.at::<f64>(0)?,   // TODO: change this to `at_unchecked` when stablizes.
+            *rvec.at::<f64>(0)?, // TODO: change this to `at_unchecked` when stablizes.
             *rvec.at::<f64>(1)?,
             *rvec.at::<f64>(2)?,
         );
         let tvec = na::Vector3::new(
-            *tvec.at::<f64>(0)?,   // TODO: change this to `at_unchecked` when stablizes.
+            *tvec.at::<f64>(0)?, // TODO: change this to `at_unchecked` when stablizes.
             *tvec.at::<f64>(1)?,
             *tvec.at::<f64>(2)?,
         );
@@ -112,9 +108,16 @@ impl<'a> TaggedObjectLocator<'a> {
 
     /// Locate every object registered in this tagged object locator, then store the results in a
     /// shared mapping from each object's name to their transformation from the camera's frame.
-    pub fn locate_objects<'b>(&mut self, detections: &'b [apriltag::ApriltagDetection], result: Arc<Mutex<BTreeMap<String, na::Isometry3<f64>>>>) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn locate_objects<'b>(
+        &mut self,
+        detections: &'b [apriltag::ApriltagDetection],
+        result: Arc<Mutex<BTreeMap<String, na::Isometry3<f64>>>>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // Classify each tag into their respective object
-        let mut tag_classification: BTreeMap<usize, Vec<(&'b apriltag::ApriltagDetection, TagLocation)>> = BTreeMap::new();
+        let mut tag_classification: BTreeMap<
+            usize,
+            Vec<(&'b apriltag::ApriltagDetection, TagLocation)>,
+        > = BTreeMap::new();
         for detection in detections {
             let tag_index = TagIndex::new(detection.family()?, detection.id());
             if let Some((registry_index, location)) = self.tag_map.get(&tag_index) {
@@ -129,7 +132,7 @@ impl<'a> TaggedObjectLocator<'a> {
         let mut result = result.lock().unwrap();
         result.clear();
         for (registry_index, detections) in tag_classification {
-            let name = self.registry[registry_index].name.clone();    // TODO: this frequently creates/drops string objects in each iteration
+            let name = self.registry[registry_index].name.clone(); // TODO: this frequently creates/drops string objects in each iteration
             result.insert(name, self.locate_single_object(&detections)?);
         }
         Ok(())

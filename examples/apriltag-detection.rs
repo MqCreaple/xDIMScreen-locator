@@ -1,6 +1,6 @@
-use opencv::prelude::*;
-use opencv::{imgproc, highgui, videoio};
 use opencv::core::{Point, Scalar};
+use opencv::prelude::*;
+use opencv::{highgui, imgproc, videoio};
 use xDIMScreen_locator::tag::apriltag::ImageU8View;
 use xDIMScreen_locator::{self, tag::apriltag};
 
@@ -9,10 +9,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     highgui::named_window(window, highgui::WINDOW_AUTOSIZE)?;
     let cam_index = 0;
     let mut cam = videoio::VideoCapture::new(cam_index, videoio::CAP_ANY)?;
-	let opened = videoio::VideoCapture::is_opened(&cam)?;
-	if !opened {
-		return Err(format!("Unable to open camera at index {}", cam_index).into());
-	}
+    let opened = videoio::VideoCapture::is_opened(&cam)?;
+    if !opened {
+        return Err(format!("Unable to open camera at index {}", cam_index).into());
+    }
 
     // create a tag detector with tag36h11 family
     let mut tag_family = apriltag::ApriltagFamilyType::new(apriltag::ApriltagFamily::Tag36h11);
@@ -27,7 +27,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let mut gray = Mat::default();
-        imgproc::cvt_color(&frame, &mut gray, imgproc::COLOR_BGR2GRAY, 0, opencv::core::AlgorithmHint::ALGO_HINT_ACCURATE)?;
+        imgproc::cvt_color(
+            &frame,
+            &mut gray,
+            imgproc::COLOR_BGR2GRAY,
+            0,
+            opencv::core::AlgorithmHint::ALGO_HINT_ACCURATE,
+        )?;
 
         let mut image = ImageU8View::from(&mut gray);
         let detections = detector.detect(image.inner_mut());
@@ -49,10 +55,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         highgui::imshow(window, &frame)?;
 
-		let key = highgui::wait_key(30)?;
-		if key > 0 && key != 255 {
-			break;
-		}
+        let key = highgui::wait_key(30)?;
+        if key > 0 && key != 255 {
+            break;
+        }
     }
 
     Ok(())

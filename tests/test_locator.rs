@@ -1,14 +1,21 @@
-use std::{collections::BTreeMap, sync::{Arc, Mutex}};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, Mutex},
+};
 
-use xDIMScreen_locator::{camera::CameraProperty, tag::{apriltag::{apriltag_binding, ApriltagDetection, ApriltagFamily, ApriltagFamilyType}, locator::TaggedObjectLocator, tagged_object::TaggedObject}};
+use xDIMScreen_locator::{
+    camera::CameraProperty,
+    tag::{
+        apriltag::{ApriltagDetection, ApriltagFamily, ApriltagFamilyType, apriltag_binding},
+        locator::TaggedObjectLocator,
+        tagged_object::TaggedObject,
+    },
+};
 
 #[test]
 fn test_locator() {
-    let camera_prop = CameraProperty::new(
-        (1920, 1080),
-        (None, Some(f64::to_radians(50.0))),
-        None,
-    ).unwrap();
+    let camera_prop =
+        CameraProperty::new((1920, 1080), (None, Some(f64::to_radians(50.0))), None).unwrap();
 
     let mut locator = TaggedObjectLocator::new(camera_prop);
     let simple_obj = TaggedObject::new_simple("simple", ApriltagFamily::Tag36h11, 0, 1.0);
@@ -18,7 +25,8 @@ fn test_locator() {
     let family_tag36h11 = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
     let dummy_h_matd = unsafe { apriltag_binding::matd_create(2, 2) };
     let detection_raw = unsafe {
-        libc::malloc(std::mem::size_of::<apriltag_binding::apriltag_detection>()) as *mut apriltag_binding::apriltag_detection
+        libc::malloc(std::mem::size_of::<apriltag_binding::apriltag_detection>())
+            as *mut apriltag_binding::apriltag_detection
     };
     unsafe {
         (*detection_raw).family = family_tag36h11.c_type;
@@ -29,11 +37,18 @@ fn test_locator() {
 
         // the tag is located at the center of the camera. Its side length is 20 pixels seen by the camera.
         (*detection_raw).c = [960.0, 540.0];
-        (*detection_raw).p = [[950.0, 550.0], [970.0, 550.0], [970.0, 530.0], [950.0, 530.0]];
+        (*detection_raw).p = [
+            [950.0, 550.0],
+            [970.0, 550.0],
+            [970.0, 530.0],
+            [950.0, 530.0],
+        ];
     }
     let detection = unsafe { ApriltagDetection::new_from_raw(detection_raw) };
 
-    locator.locate_objects(&[detection], locator_results.clone()).unwrap();
+    locator
+        .locate_objects(&[detection], locator_results.clone())
+        .unwrap();
 
     let result_lock = locator_results.lock().unwrap();
 

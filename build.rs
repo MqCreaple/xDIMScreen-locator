@@ -3,7 +3,15 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     let project_root = env::var("CARGO_MANIFEST_DIR").unwrap();
-    println!("cargo:rustc-link-search={}", Path::new(&project_root).join("ext").join("apriltag").join("build").join("Release").display());
+    println!(
+        "cargo:rustc-link-search={}",
+        Path::new(&project_root)
+            .join("ext")
+            .join("apriltag")
+            .join("build")
+            .join("Release")
+            .display()
+    );
     println!("cargo:rustc-link-lib=static=apriltag");
 
     let apriltag_bindings = bindgen::Builder::default()
@@ -13,7 +21,7 @@ fn main() {
         // .wrap_static_fns(true)             // TODO: generate bindings for inline functions
         .generate()
         .expect("Unable to generate bindings for apriltag!");
-    
+
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     apriltag_bindings
         .write_to_file(out_path.join("apriltag-bindings.rs"))

@@ -1,7 +1,7 @@
+use opencv::prelude::*;
 use std::ffi::CStr;
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
-use opencv::prelude::*;
 
 extern crate nalgebra as na;
 
@@ -46,7 +46,9 @@ impl TryFrom<&str> for ApriltagFamily {
             "tagCustom48h12" => Ok(Self::TagCustom48h12),
             "tagStandard41h12" => Ok(Self::TagStandard41h12),
             "tagStandard52h13" => Ok(Self::TagStandard52h13),
-            _ => Err(UnsupportedTagFamilyError { name: value.to_string() })
+            _ => Err(UnsupportedTagFamilyError {
+                name: value.to_string(),
+            }),
         }
     }
 }
@@ -72,9 +74,7 @@ impl ApriltagFamilyType {
                 ApriltagFamily::TagStandard52h13 => tagStandard52h13_create(),
             }
         };
-        Self {
-            family, c_type
-        }
+        Self { family, c_type }
     }
 }
 
@@ -103,15 +103,17 @@ pub struct UnsupportedTagFamilyError {
 
 impl UnsupportedTagFamilyError {
     pub fn new(name: String) -> Self {
-        Self {
-            name
-        }
+        Self { name }
     }
 }
 
 impl Debug for UnsupportedTagFamilyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Tag family \"{}\" is not supported by the current program!", self.name)
+        write!(
+            f,
+            "Tag family \"{}\" is not supported by the current program!",
+            self.name
+        )
     }
 }
 
@@ -126,7 +128,7 @@ impl std::error::Error for UnsupportedTagFamilyError {}
 //-- Apriltag detector --//
 
 /// Wrapper type of `apriltag_detection` in the apriltag C library.
-/// 
+///
 /// This struct is for storing the information of a single apriltag detection on an image
 pub struct ApriltagDetection(*mut apriltag_detection);
 
@@ -168,12 +170,14 @@ impl ApriltagDetection {
 
 impl Drop for ApriltagDetection {
     fn drop(&mut self) {
-        unsafe { apriltag_detection_destroy(self.0); }
+        unsafe {
+            apriltag_detection_destroy(self.0);
+        }
     }
 }
 
 /// Wrapper type of `apriltag_detector` in the apriltag C library.
-/// 
+///
 /// The lifetime `'a` is requied such that the tag detector lives shorter than the tag family
 /// objects added to the detector.
 pub struct ApriltagDetector<'a>(apriltag_detector, PhantomData<&'a apriltag_detector>);
@@ -192,7 +196,9 @@ impl<'a> ApriltagDetector<'a> {
     }
 
     pub fn clear_families(&mut self) {
-        unsafe { apriltag_detector_clear_families(&mut self.0); }
+        unsafe {
+            apriltag_detector_clear_families(&mut self.0);
+        }
     }
 
     pub fn detect(&mut self, img: &mut image_u8) -> Vec<ApriltagDetection> {
@@ -200,7 +206,9 @@ impl<'a> ApriltagDetector<'a> {
         let z_array_size = unsafe { (*z_array).size as usize };
         let ret = (0..z_array_size)
             .map(|i| unsafe { *((*z_array).data as *const *mut apriltag_detection).add(i) })
-            .map(|apriltag_detection_ptr| unsafe { ApriltagDetection::new_from_raw(apriltag_detection_ptr) })
+            .map(|apriltag_detection_ptr| unsafe {
+                ApriltagDetection::new_from_raw(apriltag_detection_ptr)
+            })
             .collect::<Vec<_>>();
 
         // Call `zarray_destroy` to destroy `z_array`.
@@ -210,7 +218,11 @@ impl<'a> ApriltagDetector<'a> {
             if (*z_array).data != std::ptr::null_mut() {
                 libc::free((*z_array).data as *mut libc::c_void);
             }
-            libc::memset(z_array as *mut libc::c_void, 0, std::mem::size_of::<zarray_t>());
+            libc::memset(
+                z_array as *mut libc::c_void,
+                0,
+                std::mem::size_of::<zarray_t>(),
+            );
             libc::free(z_array as *mut libc::c_void);
         }
 
@@ -220,7 +232,9 @@ impl<'a> ApriltagDetector<'a> {
 
 impl<'a> Drop for ApriltagDetector<'a> {
     fn drop(&mut self) {
-        unsafe { apriltag_detector_destroy(&mut self.0); }
+        unsafe {
+            apriltag_detector_destroy(&mut self.0);
+        }
     }
 }
 
@@ -238,13 +252,21 @@ impl ImageConversionError {
 
 impl Debug for ImageConversionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Unable to convert matrix -\n{:?}\ninto apriltag image format!", self.from_mat)
+        write!(
+            f,
+            "Unable to convert matrix -\n{:?}\ninto apriltag image format!",
+            self.from_mat
+        )
     }
 }
 
 impl Display for ImageConversionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Unable to convert matrix -\n{:?}\ninto apriltag image format!", self.from_mat)
+        write!(
+            f,
+            "Unable to convert matrix -\n{:?}\ninto apriltag image format!",
+            self.from_mat
+        )
     }
 }
 
@@ -258,9 +280,10 @@ pub struct ImageU8(image_u8);
 impl ImageU8 {
     pub fn new(width: usize, height: usize) -> Self {
         unsafe {
-            Self::new_from_raw(
-                image_u8_create(width.try_into().unwrap(), height.try_into().unwrap())
-            )
+            Self::new_from_raw(image_u8_create(
+                width.try_into().unwrap(),
+                height.try_into().unwrap(),
+            ))
         }
     }
 
@@ -281,10 +304,12 @@ impl ImageU8 {
     }
 
     pub fn gaussian_blur(&mut self, sigma: f64, k: i32) {
-        unsafe { image_u8_gaussian_blur(&mut self.0, sigma, k.into()); }
+        unsafe {
+            image_u8_gaussian_blur(&mut self.0, sigma, k.into());
+        }
     }
 
-    pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32 ) {
+    pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32) {
         unsafe { image_u8_draw_line(&mut self.0, x0, y0, x1, y1, value.into(), width.into()) }
     }
 
@@ -306,13 +331,13 @@ impl Drop for ImageU8 {
 }
 
 /// An wrapper type of `image_u8` that does not hold ownership to its internal data.
-/// 
+///
 /// This is useful for creating an image from another 2D or 3D data types. For example, if you want
 /// to create an image from [opencv::prelude::Mat], the returned image type will be `ImageViewU8<'a, Mat>`.
-/// 
+///
 /// This type has internal mutability, meaning that those with access to this type can mutate the content
 /// of the image.
-/// 
+///
 /// This type does not implement the `Drop` trait. Instead, it needs the parent type to handle memory
 /// deallocation.
 pub struct ImageU8View<'a, T: 'a> {
@@ -334,10 +359,12 @@ impl<'a, T: 'a> ImageU8View<'a, T> {
     }
 
     pub fn gaussian_blur(&mut self, sigma: f64, k: i32) {
-        unsafe { image_u8_gaussian_blur(&mut self.img, sigma, k.into()); }
+        unsafe {
+            image_u8_gaussian_blur(&mut self.img, sigma, k.into());
+        }
     }
 
-    pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32 ) {
+    pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32) {
         unsafe { image_u8_draw_line(&mut self.img, x0, y0, x1, y1, value.into(), width.into()) }
     }
 
@@ -354,6 +381,9 @@ impl<'a> From<&'a mut Mat> for ImageU8View<'a, Mat> {
             stride: value.cols(),
             buf: value.data_mut(),
         };
-        Self { img: img_inner, parent: value }
+        Self {
+            img: img_inner,
+            parent: value,
+        }
     }
 }

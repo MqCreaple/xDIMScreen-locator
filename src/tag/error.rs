@@ -1,6 +1,6 @@
-use std::ops::RangeInclusive;
-use std::fmt::{Debug, Display};
 use std::error::Error;
+use std::fmt::{Debug, Display};
+use std::ops::RangeInclusive;
 
 use crate::tag::tagged_object::TagIndex;
 
@@ -12,7 +12,10 @@ pub struct InvalidFormatError {
 
 impl InvalidFormatError {
     pub fn new<S: Into<String>>(object: &serde_json::Value, reason: S) -> Self {
-        Self { object: object.clone(), reason: reason.into() }
+        Self {
+            object: object.clone(),
+            reason: reason.into(),
+        }
     }
 }
 
@@ -21,8 +24,7 @@ impl Debug for InvalidFormatError {
         write!(
             f,
             "Invalid format for object:\n{}\nReason: {}",
-            self.object,
-            self.reason,
+            self.object, self.reason,
         )
     }
 }
@@ -45,7 +47,7 @@ impl UnsupportedVersionError {
     pub fn new(version: i64, supported_versions: RangeInclusive<i64>) -> Self {
         Self {
             version: version,
-            supported_versions
+            supported_versions,
         }
     }
 }
@@ -80,20 +82,36 @@ pub struct ConflictingTagError {
 
 impl ConflictingTagError {
     pub fn new(tag: TagIndex, object1: String, object2: String) -> Self {
-        Self { tag: Some(tag), object1, object2 }
+        Self {
+            tag: Some(tag),
+            object1,
+            object2,
+        }
     }
 
     pub fn new_name(name: &str) -> Self {
-        Self { tag: None, object1: name.to_string(), object2: name.to_string() }
+        Self {
+            tag: None,
+            object1: name.to_string(),
+            object2: name.to_string(),
+        }
     }
 }
 
 impl Debug for ConflictingTagError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(tag) = self.tag {
-            write!(f, "Tag \"{}\" is in both object \"{}\" and object \"{}\"!", tag, self.object1, self.object2)
+            write!(
+                f,
+                "Tag \"{}\" is in both object \"{}\" and object \"{}\"!",
+                tag, self.object1, self.object2
+            )
         } else {
-            write!(f, "Conflicting object names: \"{}\" and \"{}\"", self.object1, self.object2)
+            write!(
+                f,
+                "Conflicting object names: \"{}\" and \"{}\"",
+                self.object1, self.object2
+            )
         }
     }
 }
