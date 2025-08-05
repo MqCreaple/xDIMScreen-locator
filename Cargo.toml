@@ -24,3 +24,6 @@ bindgen = "0.72.0"
 
 [patch.crates-io]
 egui-plotter = { git = "https://github.com/MqCreaple/egui-plotter" }
+
+[features]
+visualize = []

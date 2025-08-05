@@ -23,13 +23,18 @@ pub struct TaggedObjectLocator<'a> {
     tag_map: HashMap<TagIndex, (usize, TagLocation)>,
 }
 
+/// A data struct for storing the located objects in each frame.
+/// 
+/// Lifetime parameter `'a` denotes the lifetime of the objects it is referring to. In other words, the
+/// specific objects (e.g. handheld screen, wand, etc.) must live longer than the `LocatedObjects` referring
+/// to them.
 #[derive(Debug)]
-pub struct LocatedObjects {
+pub struct LocatedObjects<'a> {
     pub(super) timestamp: SystemTime,
-    pub(super) name_map: BTreeMap<String, na::Isometry3<f64>>,
+    pub(super) name_map: BTreeMap<&'a str, na::Isometry3<f64>>,
 }
 
-impl LocatedObjects {
+impl<'a> LocatedObjects<'a> {
     pub fn new() -> Self {
         Self {
             timestamp: SystemTime::now(),
@@ -41,7 +46,7 @@ impl LocatedObjects {
         self.timestamp
     }
 
-    pub fn name_map(&self) -> &BTreeMap<String, na::Isometry3<f64>> {
+    pub fn name_map(&self) -> &BTreeMap<&'a str, na::Isometry3<f64>> {
         &self.name_map
     }
 }
@@ -135,7 +140,7 @@ impl<'a> TaggedObjectLocator<'a> {
     pub fn locate_objects<'b>(
         &mut self,
         detections: &'b [apriltag::ApriltagDetection],
-        result: Arc<(Mutex<LocatedObjects>, Condvar)>,
+        result: Arc<(Mutex<LocatedObjects<'a>>, Condvar)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Classify each tag into their respective object
         let mut tag_classification: BTreeMap<
@@ -157,7 +162,7 @@ impl<'a> TaggedObjectLocator<'a> {
         locked_result.timestamp = SystemTime::now();
         locked_result.name_map.clear();
         for (registry_index, detections) in tag_classification {
-            let name = self.registry[registry_index].name.clone(); // TODO: this frequently creates/drops string objects in each iteration
+            let name = self.registry[registry_index].name.as_str();
             locked_result
                 .name_map
                 .insert(name, self.locate_single_object(&detections)?);

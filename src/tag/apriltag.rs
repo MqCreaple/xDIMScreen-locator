@@ -1,7 +1,7 @@
 use opencv::prelude::*;
 use std::ffi::CStr;
 use std::fmt::{Debug, Display};
-use std::marker::PhantomData;
+use std::os::raw;
 
 extern crate nalgebra as na;
 
@@ -187,6 +187,14 @@ impl ApriltagDetector {
         unsafe { Self(apriltag_detector_create()) }
     }
 
+    pub fn new_multithreading(num_threads: usize) -> Self {
+        unsafe {
+            let inner = apriltag_detector_create();
+            (*inner).nthreads = num_threads as raw::c_int;
+            Self(inner)
+        }
+    }
+
     pub fn add_family(&mut self, tag_family: &mut ApriltagFamilyType) {
         unsafe { apriltag_detector_add_family_bits(self.0, tag_family.c_type, 2) }
     }
@@ -305,12 +313,12 @@ impl ImageU8 {
 
     pub fn gaussian_blur(&mut self, sigma: f64, k: i32) {
         unsafe {
-            image_u8_gaussian_blur(&mut self.0, sigma, k.into());
+            image_u8_gaussian_blur(&mut self.0, sigma, k as raw::c_int);
         }
     }
 
     pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32) {
-        unsafe { image_u8_draw_line(&mut self.0, x0, y0, x1, y1, value.into(), width.into()) }
+        unsafe { image_u8_draw_line(&mut self.0, x0, y0, x1, y1, value as raw::c_int, width as raw::c_int) }
     }
 
     pub fn draw_circle(&mut self, x0: f32, y0: f32, radius: f32, value: i32) {
@@ -360,12 +368,12 @@ impl<'a, T: 'a> ImageU8View<'a, T> {
 
     pub fn gaussian_blur(&mut self, sigma: f64, k: i32) {
         unsafe {
-            image_u8_gaussian_blur(&mut self.img, sigma, k.into());
+            image_u8_gaussian_blur(&mut self.img, sigma, k as raw::c_int);
         }
     }
 
     pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32) {
-        unsafe { image_u8_draw_line(&mut self.img, x0, y0, x1, y1, value.into(), width.into()) }
+        unsafe { image_u8_draw_line(&mut self.img, x0, y0, x1, y1, value as raw::c_int, width as raw::c_int) }
     }
 
     pub fn draw_circle(&mut self, x0: f32, y0: f32, radius: f32, value: i32) {

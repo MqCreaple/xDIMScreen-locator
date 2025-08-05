@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // apriltag detector
     let mut family = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
-    let mut detector = ApriltagDetector::new();
+    let mut detector = ApriltagDetector::new_multithreading(4);
     detector.add_family(&mut family);
 
     // object locator

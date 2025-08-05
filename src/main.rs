@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // apriltag detector
     let mut family = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
-    let mut detector = ApriltagDetector::new();
+    let mut detector = ApriltagDetector::new_multithreading(4);
     detector.add_family(&mut family);
 
     // load objects
@@ -81,15 +81,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     locator.add(&wand)?;
     let located_objects = Arc::new((Mutex::new(LocatedObjects::new()), Condvar::new()));
 
-    // start server thread
-    let located_objects_clone = located_objects.clone();
-    let server_thread =
-        thread::spawn(move || server_thread_main(30002, located_objects_clone).unwrap());
+    // A thread scope is used here to resolve the lifetime issue.
+    // Otherwise, the compiler will think that the objects need to be borrowed for 'static.
+    thread::scope(|s| {
+        // start server thread
+        let located_objects_clone = located_objects.clone();
+        let _ =
+            s.spawn(move || server_thread_main(30002, located_objects_clone).unwrap());
 
-    // start locator
-    locator_thread_main(cam, detector, locator, located_objects)?;
+        // start locator
+        locator_thread_main(cam, detector, locator, located_objects).unwrap();
+    });
 
-    // join server thread
-    server_thread.join().unwrap();
     Ok(())
 }

@@ -7,9 +7,9 @@ use crate::tag::locator::LocatedObjects;
 
 pub mod packet;
 
-pub fn server_thread_main(
+pub fn server_thread_main<'a>(
     port: u16,
-    located_objects: Arc<(Mutex<LocatedObjects>, Condvar)>,
+    located_objects: Arc<(Mutex<LocatedObjects<'a>>, Condvar)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // open server
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port))?;
@@ -43,7 +43,7 @@ pub fn server_thread_main(
         for (name, location) in locked_located_objects.name_map() {
             let packet = packet::ObjectLocationPacket {
                 time: last_timestamp.duration_since(UNIX_EPOCH)?.as_millis(),
-                name: name.clone(),
+                name: name.to_string(),
                 transform: location.clone(),
             };
             let serialized = serde_json::to_string(&packet)?;
