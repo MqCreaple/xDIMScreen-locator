@@ -180,29 +180,29 @@ impl Drop for ApriltagDetection {
 ///
 /// The lifetime `'a` is requied such that the tag detector lives shorter than the tag family
 /// objects added to the detector.
-pub struct ApriltagDetector<'a>(apriltag_detector, PhantomData<&'a apriltag_detector>);
+pub struct ApriltagDetector(*mut apriltag_detector);
 
-impl<'a> ApriltagDetector<'a> {
+impl ApriltagDetector {
     pub fn new() -> Self {
-        unsafe { Self(*apriltag_detector_create(), PhantomData::default()) }
+        unsafe { Self(apriltag_detector_create()) }
     }
 
-    pub fn add_family<'b: 'a>(&mut self, tag_family: &'b mut ApriltagFamilyType) {
-        unsafe { apriltag_detector_add_family_bits(&mut self.0, tag_family.c_type, 2) }
+    pub fn add_family(&mut self, tag_family: &mut ApriltagFamilyType) {
+        unsafe { apriltag_detector_add_family_bits(self.0, tag_family.c_type, 2) }
     }
 
-    pub fn remove_family<'b: 'a>(&mut self, tag_family: &'b mut ApriltagFamilyType) {
-        unsafe { apriltag_detector_remove_family(&mut self.0, tag_family.c_type) }
+    pub fn remove_family(&mut self, tag_family: &mut ApriltagFamilyType) {
+        unsafe { apriltag_detector_remove_family(self.0, tag_family.c_type) }
     }
 
     pub fn clear_families(&mut self) {
         unsafe {
-            apriltag_detector_clear_families(&mut self.0);
+            apriltag_detector_clear_families(self.0);
         }
     }
 
     pub fn detect(&mut self, img: &mut image_u8) -> Vec<ApriltagDetection> {
-        let z_array = unsafe { apriltag_detector_detect(&mut self.0, img) };
+        let z_array = unsafe { apriltag_detector_detect(self.0, img) };
         let z_array_size = unsafe { (*z_array).size as usize };
         let ret = (0..z_array_size)
             .map(|i| unsafe { *((*z_array).data as *const *mut apriltag_detection).add(i) })
@@ -230,10 +230,10 @@ impl<'a> ApriltagDetector<'a> {
     }
 }
 
-impl<'a> Drop for ApriltagDetector<'a> {
+impl Drop for ApriltagDetector {
     fn drop(&mut self) {
         unsafe {
-            apriltag_detector_destroy(&mut self.0);
+            apriltag_detector_destroy(self.0);
         }
     }
 }

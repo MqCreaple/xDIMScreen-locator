@@ -30,7 +30,8 @@ pub fn server_thread_main(
     // set up conditional variable
     let mut locked_located_objects = located_objects.0.lock().unwrap();
     let mut last_timestamp = SystemTime::now();
-    loop {
+    'main_loop: loop {
+        // get all the detected objects
         locked_located_objects = located_objects
             .1
             .wait_while(locked_located_objects, |v| {
@@ -46,8 +47,17 @@ pub fn server_thread_main(
                 transform: location.clone(),
             };
             let serialized = serde_json::to_string(&packet)?;
-            stream.write(serialized.as_bytes())?;
-            stream.write(b"\n")?;
+            let stream_write_result = stream
+                .write(serialized.as_bytes())
+                .and_then(|_| stream.write(b"\n"));
+            match stream_write_result {
+                Ok(_) => {}
+                Err(e) => {
+                    // Error occurred when writing to the stream. Jump out of the loop.
+                    log::error!("Error occurred with client {}: {}", addr, e);
+                    break 'main_loop;
+                }
+            }
         }
     }
     Ok(())
