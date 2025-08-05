@@ -16,7 +16,7 @@ map-macro = "0.3.0"
 nalgebra = "0.34.0"
 opencv = { version = "0.95.1", default-features = false, features = ["clang-runtime", "calib3d", "imgproc", "highgui", "videoio"] }
 plotters = "0.3.7"
-serde = "1.0.219"
+serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
 
 [build-dependencies]

@@ -35,6 +35,15 @@ impl Display for TagIndex {
     }
 }
 
+impl From<(apriltag::ApriltagFamily, i32)> for TagIndex {
+    fn from(value: (apriltag::ApriltagFamily, i32)) -> Self {
+        Self {
+            family: value.0,
+            id: value.1,
+        }
+    }
+}
+
 /// Tag location
 ///
 /// Records the transformation and scaling relative to the camera's origin.

@@ -1,13 +1,13 @@
 use std::{
     collections::BTreeMap,
-    sync::{Arc, Mutex},
+    sync::{Arc, Condvar, Mutex},
 };
 
 use xDIMScreen_locator::{
     camera::CameraProperty,
     tag::{
         apriltag::{ApriltagDetection, ApriltagFamily, ApriltagFamilyType, apriltag_binding},
-        locator::TaggedObjectLocator,
+        locator::{LocatedObjects, TaggedObjectLocator},
         tagged_object::TaggedObject,
     },
 };
@@ -20,7 +20,7 @@ fn test_locator() {
     let mut locator = TaggedObjectLocator::new(camera_prop);
     let simple_obj = TaggedObject::new_simple("simple", ApriltagFamily::Tag36h11, 0, 1.0);
     locator.add(&simple_obj).unwrap();
-    let locator_results = Arc::new(Mutex::new(BTreeMap::new()));
+    let locator_results = Arc::new((Mutex::new(LocatedObjects::new()), Condvar::new()));
 
     let family_tag36h11 = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
     let dummy_h_matd = unsafe { apriltag_binding::matd_create(2, 2) };
@@ -50,12 +50,12 @@ fn test_locator() {
         .locate_objects(&[detection], locator_results.clone())
         .unwrap();
 
-    let result_lock = locator_results.lock().unwrap();
+    let result_lock = locator_results.0.lock().unwrap();
 
     // object detector should be able to detect the object 'simple'
-    assert!(result_lock.contains_key("simple"));
+    assert!(result_lock.name_map().contains_key("simple"));
 
-    let simple_tag_location = result_lock.get("simple").unwrap();
+    let simple_tag_location = result_lock.name_map().get("simple").unwrap();
     // 'simple' should not have any rotation
     assert!(f64::abs(simple_tag_location.rotation.i) <= 1e-5);
     assert!(f64::abs(simple_tag_location.rotation.j) <= 1e-5);

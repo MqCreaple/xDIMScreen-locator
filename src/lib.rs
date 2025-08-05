@@ -4,5 +4,6 @@
 
 pub mod camera;
 pub mod facial;
+pub mod net;
 pub mod tag;
 pub mod visualize;

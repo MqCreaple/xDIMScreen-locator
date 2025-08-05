@@ -149,12 +149,12 @@ impl VisualizeChart {
 
                     // draw the x and y axis of each tag
                     const X_AXIS: [na::Point3<f64>; 2] = [
-                        na::Point3::new(-0.1, 0.0, 0.0),
-                        na::Point3::new(0.1, 0.0, 0.0),
+                        na::Point3::new(0.0, 0.0, 0.0),
+                        na::Point3::new(0.2, 0.0, 0.0),
                     ];
                     const Y_AXIS: [na::Point3<f64>; 2] = [
-                        na::Point3::new(0.0, -0.1, 0.0),
-                        na::Point3::new(0.0, 0.1, 0.0),
+                        na::Point3::new(0.0, 0.0, 0.0),
+                        na::Point3::new(0.0, 0.2, 0.0),
                     ];
                     chart
                         .draw_series(LineSeries::new(

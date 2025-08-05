@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::SystemTime;
 
 use opencv::calib3d;
 use opencv::prelude::*;
@@ -20,6 +21,29 @@ pub struct TaggedObjectLocator<'a> {
 
     /// Mapping from each tag's property to its corresponding object's index in the registry array
     tag_map: HashMap<TagIndex, (usize, TagLocation)>,
+}
+
+#[derive(Debug)]
+pub struct LocatedObjects {
+    pub(super) timestamp: SystemTime,
+    pub(super) name_map: BTreeMap<String, na::Isometry3<f64>>,
+}
+
+impl LocatedObjects {
+    pub fn new() -> Self {
+        Self {
+            timestamp: SystemTime::now(),
+            name_map: BTreeMap::new(),
+        }
+    }
+
+    pub fn timestamp(&self) -> SystemTime {
+        self.timestamp
+    }
+
+    pub fn name_map(&self) -> &BTreeMap<String, na::Isometry3<f64>> {
+        &self.name_map
+    }
 }
 
 impl<'a> TaggedObjectLocator<'a> {
@@ -111,7 +135,7 @@ impl<'a> TaggedObjectLocator<'a> {
     pub fn locate_objects<'b>(
         &mut self,
         detections: &'b [apriltag::ApriltagDetection],
-        result: Arc<Mutex<BTreeMap<String, na::Isometry3<f64>>>>,
+        result: Arc<(Mutex<LocatedObjects>, Condvar)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Classify each tag into their respective object
         let mut tag_classification: BTreeMap<
@@ -129,12 +153,18 @@ impl<'a> TaggedObjectLocator<'a> {
         }
 
         // Lock the result dictionary and write the location results
-        let mut result = result.lock().unwrap();
-        result.clear();
+        let mut locked_result = result.0.lock().unwrap();
+        locked_result.timestamp = SystemTime::now();
+        locked_result.name_map.clear();
         for (registry_index, detections) in tag_classification {
             let name = self.registry[registry_index].name.clone(); // TODO: this frequently creates/drops string objects in each iteration
-            result.insert(name, self.locate_single_object(&detections)?);
+            locked_result
+                .name_map
+                .insert(name, self.locate_single_object(&detections)?);
         }
+        drop(locked_result);
+        // signal all other threads waiting on this conditional variable
+        result.1.notify_all();
         Ok(())
     }
 }

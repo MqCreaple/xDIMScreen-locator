@@ -1,18 +1,18 @@
-use std::collections::BTreeMap;
 use std::env;
 use std::f64;
 use std::fs::File;
 use std::path::Path;
+use std::sync::Condvar;
 use std::sync::{Arc, Mutex};
 
 use map_macro::hash_map;
 use opencv::prelude::*;
-use opencv::{core, highgui, imgproc, videoio};
+use opencv::videoio;
 
 use xDIMScreen_locator::camera::CameraProperty;
-use xDIMScreen_locator::tag::apriltag::{
-    ApriltagDetector, ApriltagFamily, ApriltagFamilyType, ImageU8View,
-};
+use xDIMScreen_locator::tag::apriltag::{ApriltagDetector, ApriltagFamily, ApriltagFamilyType};
+use xDIMScreen_locator::tag::locator::LocatedObjects;
+use xDIMScreen_locator::tag::locator_thread_main;
 use xDIMScreen_locator::tag::tagged_object::TagIndex;
 use xDIMScreen_locator::tag::{locator::TaggedObjectLocator, tagged_object::TaggedObject};
 
@@ -82,58 +82,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     locator.add(&handheld_screen)?;
     let wand = load_wand_object()?;
     locator.add(&wand)?;
-    let locator_results = Arc::new(Mutex::new(BTreeMap::new()));
+    let located_objects = Arc::new((Mutex::new(LocatedObjects::new()), Condvar::new()));
 
-    loop {
-        let mut frame = Mat::default();
-        cam.read(&mut frame)?;
-        if frame.size()?.width <= 0 {
-            continue;
-        }
+    // start locator thread
+    locator_thread_main(cam, detector, locator, located_objects)?;
 
-        let mut gray = Mat::default();
-        imgproc::cvt_color(
-            &frame,
-            &mut gray,
-            imgproc::COLOR_BGR2GRAY,
-            0,
-            opencv::core::AlgorithmHint::ALGO_HINT_ACCURATE,
-        )?;
-        let mut image = ImageU8View::from(&mut gray);
-        let detections = detector.detect(image.inner_mut());
-        for detection in &detections {
-            // draw the detected apriltag on the frame
-            for i in 0..4 {
-                let start_pt = detection.corners()[i];
-                let end_pt = detection.corners()[(i + 1) % 4];
-                imgproc::line(
-                    &mut frame,
-                    core::Point::new(start_pt.x.round() as i32, start_pt.y.round() as i32),
-                    core::Point::new(end_pt.x.round() as i32, end_pt.y.round() as i32),
-                    core::Scalar::new(45., 44., 233., 0.),
-                    2,
-                    imgproc::LINE_8,
-                    0,
-                )?;
-            }
-        }
-        highgui::imshow("window", &frame)?;
-
-        // locate object
-        locator.locate_objects(detections.as_slice(), locator_results.clone())?;
-        let locator_results_lock = locator_results.lock().unwrap();
-        for (name, loc) in locator_results_lock.iter() {
-            println!("Located object: {}", name);
-            println!("{:?}", loc);
-            println!();
-        }
-
-        // wait for exit key
-        let key = highgui::wait_key(10)?;
-        if key > 0 && key != 255 {
-            break;
-        }
-    }
-
+    // TODO: Heap corruption when dropping apriltag detector
     Ok(())
 }
