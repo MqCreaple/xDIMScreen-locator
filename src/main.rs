@@ -86,8 +86,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     thread::scope(|s| {
         // start server thread
         let located_objects_clone = located_objects.clone();
-        let _ =
-            s.spawn(move || server_thread_main(30002, located_objects_clone).unwrap());
+        let _ = s.spawn(move || server_thread_main(30002, located_objects_clone).unwrap());
 
         // start locator
         locator_thread_main(cam, detector, locator, located_objects).unwrap();

@@ -1,6 +1,7 @@
 use std::{
     collections::BTreeMap,
     sync::{Arc, Condvar, Mutex},
+    time::SystemTime,
 };
 
 use xDIMScreen_locator::{
@@ -47,7 +48,7 @@ fn test_locator() {
     let detection = unsafe { ApriltagDetection::new_from_raw(detection_raw) };
 
     locator
-        .locate_objects(&[detection], locator_results.clone())
+        .locate_objects(SystemTime::now(), &[detection], locator_results.clone())
         .unwrap();
 
     let result_lock = locator_results.0.lock().unwrap();

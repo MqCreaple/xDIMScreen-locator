@@ -182,6 +182,8 @@ impl Drop for ApriltagDetection {
 /// objects added to the detector.
 pub struct ApriltagDetector(*mut apriltag_detector);
 
+unsafe impl Send for ApriltagDetector {}
+
 impl ApriltagDetector {
     pub fn new() -> Self {
         unsafe { Self(apriltag_detector_create()) }
@@ -209,7 +211,7 @@ impl ApriltagDetector {
         }
     }
 
-    pub fn detect(&mut self, img: &mut image_u8) -> Vec<ApriltagDetection> {
+    pub fn detect(&self, img: &mut image_u8) -> Vec<ApriltagDetection> {
         let z_array = unsafe { apriltag_detector_detect(self.0, img) };
         let z_array_size = unsafe { (*z_array).size as usize };
         let ret = (0..z_array_size)
@@ -318,7 +320,17 @@ impl ImageU8 {
     }
 
     pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32) {
-        unsafe { image_u8_draw_line(&mut self.0, x0, y0, x1, y1, value as raw::c_int, width as raw::c_int) }
+        unsafe {
+            image_u8_draw_line(
+                &mut self.0,
+                x0,
+                y0,
+                x1,
+                y1,
+                value as raw::c_int,
+                width as raw::c_int,
+            )
+        }
     }
 
     pub fn draw_circle(&mut self, x0: f32, y0: f32, radius: f32, value: i32) {
@@ -373,7 +385,17 @@ impl<'a, T: 'a> ImageU8View<'a, T> {
     }
 
     pub fn draw_line(&mut self, x0: f32, y0: f32, x1: f32, y1: f32, value: i32, width: i32) {
-        unsafe { image_u8_draw_line(&mut self.img, x0, y0, x1, y1, value as raw::c_int, width as raw::c_int) }
+        unsafe {
+            image_u8_draw_line(
+                &mut self.img,
+                x0,
+                y0,
+                x1,
+                y1,
+                value as raw::c_int,
+                width as raw::c_int,
+            )
+        }
     }
 
     pub fn draw_circle(&mut self, x0: f32, y0: f32, radius: f32, value: i32) {

@@ -1,9 +1,10 @@
 use std::sync::{Arc, Condvar, Mutex};
+use std::time::SystemTime;
 
-use opencv::prelude::*;
-use opencv::{imgproc, videoio};
 #[cfg(feature = "visualize")]
-use opencv::{core, highgui};
+use opencv::highgui;
+use opencv::prelude::*;
+use opencv::{core, imgproc, videoio};
 
 use crate::tag::apriltag::ImageU8View;
 
@@ -21,19 +22,19 @@ pub mod error;
 
 pub fn locator_thread_main<'a>(
     mut cam: videoio::VideoCapture,
-    mut detector: apriltag::ApriltagDetector,
+    detector: apriltag::ApriltagDetector,
     mut object_locator: locator::TaggedObjectLocator<'a>,
     located_objects: Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     loop {
-        // let time1 = std::time::Instant::now();
-
         let mut frame = Mat::default();
         cam.read(&mut frame)?;
         if frame.size()?.width <= 0 {
             continue;
         }
-
+        let timestamp = SystemTime::now(); // Measure the timestamp right after acquiring a frame from camera
+        // to ensure that the timestamp accurately reflects the time at which
+        // the objects are located.
         let mut gray = Mat::default();
         imgproc::cvt_color(
             &frame,
@@ -66,14 +67,7 @@ pub fn locator_thread_main<'a>(
             highgui::imshow("window", &frame)?;
         }
 
-        // let time2 = std::time::Instant::now();
-
-        // locate object
-        object_locator.locate_objects(detections.as_slice(), located_objects.clone())?;
-
-        // let time3 = std::time::Instant::now();
-
-        // log::info!("detection time: {} μs; location time: {} μs", (time2 - time1).as_micros(), (time3 - time2).as_micros());
+        object_locator.locate_objects(timestamp, detections.as_slice(), located_objects.clone())?;
 
         #[cfg(feature = "visualize")]
         {

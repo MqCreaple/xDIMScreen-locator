@@ -24,7 +24,7 @@ pub struct TaggedObjectLocator<'a> {
 }
 
 /// A data struct for storing the located objects in each frame.
-/// 
+///
 /// Lifetime parameter `'a` denotes the lifetime of the objects it is referring to. In other words, the
 /// specific objects (e.g. handheld screen, wand, etc.) must live longer than the `LocatedObjects` referring
 /// to them.
@@ -139,6 +139,7 @@ impl<'a> TaggedObjectLocator<'a> {
     /// shared mapping from each object's name to their transformation from the camera's frame.
     pub fn locate_objects<'b>(
         &mut self,
+        timestamp: SystemTime,
         detections: &'b [apriltag::ApriltagDetection],
         result: Arc<(Mutex<LocatedObjects<'a>>, Condvar)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -159,7 +160,7 @@ impl<'a> TaggedObjectLocator<'a> {
 
         // Lock the result dictionary and write the location results
         let mut locked_result = result.0.lock().unwrap();
-        locked_result.timestamp = SystemTime::now();
+        locked_result.timestamp = timestamp;
         locked_result.name_map.clear();
         for (registry_index, detections) in tag_classification {
             let name = self.registry[registry_index].name.as_str();
