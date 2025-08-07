@@ -42,3 +42,13 @@ cmake --build . --config Release
 ```
 
 After building the library, you need to add `ext/apriltag/build/Release/` to your operating system's `PATH` variable and then restart your computer, or the program might not find the correct dll to link.
+
+### Run xDIMScreen Locator
+
+After finishing all steps above, you can directly run the locator by:
+
+```bash
+cargo run --bin xDIMScreen_locator --release
+```
+
+This will automatically build the project in release mode and start running after the build finishes. If you are building it for the first time, it might take 10 to 30 minutes.

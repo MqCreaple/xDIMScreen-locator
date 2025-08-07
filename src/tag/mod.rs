@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
@@ -7,7 +6,7 @@ use std::time::SystemTime;
 #[cfg(feature = "visualize")]
 use opencv::highgui;
 use opencv::prelude::*;
-use opencv::{core, imgproc, videoio};
+use opencv::imgproc;
 
 use crate::tag::apriltag::ImageU8View;
 
