@@ -122,7 +122,7 @@ impl VisualizeChart {
                     .label("z axis");
 
                 // Draw series here
-                for (index, location) in &tagobj.tags {
+                for (_, location) in &tagobj.tags {
                     // Extract all the corner points
                     const TAG_CORNERS: [na::Point3<f64>; 5] = [
                         na::Point3::new(-1.0, -1.0, 0.0),
@@ -182,7 +182,7 @@ impl VisualizeChart {
 }
 
 impl eframe::App for VisualizeChart {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         const FPS: f64 = 60.0;
 
         CentralPanel::default().show(ctx, |ui| {

@@ -1,6 +1,14 @@
+use std::sync::{
+    Arc, RwLock,
+    atomic::{AtomicBool, Ordering},
+};
+use std::thread::Thread;
+use std::time::SystemTime;
+
 use opencv::{
     core::{CV_64F, MatExpr, Vec4d},
     prelude::*,
+    videoio,
 };
 
 pub struct CameraProperty {
@@ -82,4 +90,31 @@ impl CameraProperty {
     pub fn camera_mat(&self) -> &Mat {
         &self.camera_mat
     }
+}
+
+pub fn camera_thread_main(
+    termination_signal: Arc<AtomicBool>,
+    mut cam: videoio::VideoCapture,
+    shared_frame: Arc<RwLock<(Mat, SystemTime)>>,
+    parked_threads: Vec<&Thread>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    while !termination_signal.load(Ordering::Relaxed) {
+        let mut frame = Mat::default();
+        cam.read(&mut frame)?;
+        if frame.size()?.width <= 0 {
+            continue;
+        }
+        let mut shared_frame_write = shared_frame.write().unwrap();
+        *shared_frame_write = (frame, SystemTime::now());
+        drop(shared_frame_write);
+        for thread in &parked_threads {
+            thread.unpark();
+        }
+    }
+
+    // Make sure all threads are unparked
+    for thread in &parked_threads {
+        thread.unpark();
+    }
+    Ok(())
 }

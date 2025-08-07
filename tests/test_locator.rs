@@ -1,5 +1,4 @@
 use std::{
-    collections::BTreeMap,
     sync::{Arc, Condvar, Mutex},
     time::SystemTime,
 };

@@ -1,4 +1,7 @@
-use std::sync::{Arc, Condvar, Mutex};
+use std::ops::Deref;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::thread;
 use std::time::SystemTime;
 
 #[cfg(feature = "visualize")]
@@ -21,23 +24,30 @@ pub mod locator;
 pub mod error;
 
 pub fn locator_thread_main<'a>(
-    mut cam: videoio::VideoCapture,
+    termination_signal: Arc<AtomicBool>,
+    shared_frame: Arc<RwLock<(Mat, SystemTime)>>,
     detector: apriltag::ApriltagDetector,
     mut object_locator: locator::TaggedObjectLocator<'a>,
     located_objects: Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    loop {
-        let mut frame = Mat::default();
-        cam.read(&mut frame)?;
-        if frame.size()?.width <= 0 {
-            continue;
-        }
-        let timestamp = SystemTime::now(); // Measure the timestamp right after acquiring a frame from camera
+    let mut last_recorded_timestamp = SystemTime::UNIX_EPOCH;
+    while !termination_signal.load(Ordering::Relaxed) {
+        let shared_frame_mat = loop {
+            // park the thread and wait for the camera thread to unpark it
+            thread::park();
+            // when unparked, read the camera frame
+            let shared_frame_read = shared_frame.read().unwrap();
+            if shared_frame_read.1 != last_recorded_timestamp {
+                // check the timestamp to prevent false unparking
+                last_recorded_timestamp = shared_frame_read.1;
+                break shared_frame_read.0.clone();
+            }
+        };
         // to ensure that the timestamp accurately reflects the time at which
         // the objects are located.
         let mut gray = Mat::default();
         imgproc::cvt_color(
-            &frame,
+            &shared_frame_mat,
             &mut gray,
             imgproc::COLOR_BGR2GRAY,
             0,
@@ -54,7 +64,7 @@ pub fn locator_thread_main<'a>(
                     let start_pt = detection.corners()[i];
                     let end_pt = detection.corners()[(i + 1) % 4];
                     imgproc::line(
-                        &mut frame,
+                        &mut shared_frame_mat,
                         core::Point::new(start_pt.x.round() as i32, start_pt.y.round() as i32),
                         core::Point::new(end_pt.x.round() as i32, end_pt.y.round() as i32),
                         core::Scalar::new(45., 44., 233., 0.),
@@ -67,7 +77,11 @@ pub fn locator_thread_main<'a>(
             highgui::imshow("window", &frame)?;
         }
 
-        object_locator.locate_objects(timestamp, detections.as_slice(), located_objects.clone())?;
+        object_locator.locate_objects(
+            last_recorded_timestamp,
+            detections.as_slice(),
+            located_objects.clone(),
+        )?;
 
         #[cfg(feature = "visualize")]
         {

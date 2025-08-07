@@ -97,7 +97,7 @@ impl DemoChart {
 }
 
 impl eframe::App for DemoChart {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         const FPS: f64 = 60.0;
 
         CentralPanel::default().show(ctx, |ui| {

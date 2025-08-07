@@ -1,7 +1,9 @@
 use std::error::Error;
 use std::fs::File;
 use std::path::Path;
-use std::sync::{Condvar, Mutex};
+use std::sync::atomic::AtomicBool;
+use std::sync::{Condvar, Mutex, RwLock};
+use std::time::SystemTime;
 use std::{collections::HashMap, sync::Arc};
 use std::{env, thread};
 
@@ -9,11 +11,9 @@ use map_macro::hash_map;
 use opencv::prelude::*;
 use opencv::videoio;
 
-use xDIMScreen_locator::camera::CameraProperty;
+use xDIMScreen_locator::camera::{CameraProperty, camera_thread_main};
 use xDIMScreen_locator::net::server_thread_main;
-use xDIMScreen_locator::tag::apriltag::{
-    ApriltagDetector, ApriltagFamily, ApriltagFamilyType, ImageU8View,
-};
+use xDIMScreen_locator::tag::apriltag::{ApriltagDetector, ApriltagFamily, ApriltagFamilyType};
 use xDIMScreen_locator::tag::locator::{LocatedObjects, TaggedObjectLocator};
 use xDIMScreen_locator::tag::locator_thread_main;
 use xDIMScreen_locator::tag::tagged_object::{TagIndex, TaggedObject};
@@ -79,17 +79,43 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
     )?;
     locator.add(&wand)?;
-    let located_objects = Arc::new((Mutex::new(LocatedObjects::new()), Condvar::new()));
 
     // A thread scope is used here to resolve the lifetime issue.
     // Otherwise, the compiler will think that the objects need to be borrowed for 'static.
     thread::scope(|s| {
-        // start server thread
-        let located_objects_clone = located_objects.clone();
-        let _ = s.spawn(move || server_thread_main(30002, located_objects_clone).unwrap());
+        let termination_signal = Arc::new(AtomicBool::new(false));
+        let shared_frame = Arc::new(RwLock::new((Mat::default(), SystemTime::UNIX_EPOCH)));
+        let located_objects = Arc::new((Mutex::new(LocatedObjects::new()), Condvar::new()));
 
-        // start locator
-        locator_thread_main(cam, detector, locator, located_objects).unwrap();
+        // start server thread
+        let termination_signal_clone = termination_signal.clone();
+        let located_objects_clone = located_objects.clone();
+        let _ = s.spawn(move || {
+            server_thread_main(termination_signal_clone, 30002, located_objects_clone).unwrap()
+        });
+
+        // start locator thread
+        let termination_signal_clone = termination_signal.clone();
+        let shared_frame_clone = shared_frame.clone();
+        let locator_thread = s.spawn(move || {
+            locator_thread_main(
+                termination_signal_clone,
+                shared_frame_clone,
+                detector,
+                locator,
+                located_objects,
+            )
+            .unwrap();
+        });
+
+        // start camera thread
+        camera_thread_main(
+            termination_signal,
+            cam,
+            shared_frame,
+            vec![locator_thread.thread()],
+        )
+        .unwrap();
     });
 
     Ok(())
