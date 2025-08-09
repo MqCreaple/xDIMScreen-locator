@@ -9,10 +9,31 @@ fn main() {
             .join("ext")
             .join("apriltag")
             .join("build")
+            .display()
+    );
+    println!(
+        "cargo:rustc-link-search={}",
+        Path::new(&project_root)
+            .join("ext")
+            .join("apriltag")
+            .join("build")
+            .join("Debug")
+            .display()
+    );
+    println!(
+        "cargo:rustc-link-search={}",
+        Path::new(&project_root)
+            .join("ext")
+            .join("apriltag")
+            .join("build")
             .join("Release")
             .display()
     );
-    println!("cargo:rustc-link-lib=static=apriltag");
+    if cfg!(debug_assertions) {
+        println!("cargo:rustc-link-lib=static=apriltagd");
+    } else {
+        println!("cargo:rustc-link-lib=static=apriltag");
+    }
 
     let apriltag_bindings = bindgen::Builder::default()
         .header("apriltag-wrapper.h")

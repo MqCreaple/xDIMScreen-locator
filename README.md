@@ -41,7 +41,7 @@ cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON_WRAPPER=OFF -DBUILD_EXAMPLES=OFF
 cmake --build . --config Release
 ```
 
-After building the library, you need to add `ext/apriltag/build/Release/` to your operating system's `PATH` variable and then restart your computer, or the program might not find the correct dll to link.
+After building the library, you need to add `ext/apriltag/build/` or `ext/apriltag/build/Release/` (depending on the compiler you used) to your operating system's `PATH` variable and then restart your computer, or the program might not find the correct dll to link.
 
 ### Run xDIMScreen Locator
 
