@@ -23,8 +23,8 @@ fn load_image_from_resource(file_name: &str) -> Result<Mat, Box<dyn std::error::
 
 fn benchmark_apriltag_detection(c: &mut Criterion) {
     let mut tag_family = apriltag::ApriltagFamilyType::new(apriltag::ApriltagFamily::Tag36h11);
-    let mut detector = apriltag::ApriltagDetector::new_multithreading(4);
-    detector.add_family(&mut tag_family);
+    let detector = apriltag::ApriltagDetector::new_multithreading(4)
+        .add_family(&mut tag_family);
 
     for suffix in ["360x225", "720x450", "1440x900", "2880x1800"] {
         let mut image =

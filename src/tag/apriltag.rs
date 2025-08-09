@@ -1,6 +1,7 @@
 use opencv::prelude::*;
 use std::ffi::CStr;
 use std::fmt::{Debug, Display};
+use std::marker::PhantomData;
 use std::os::raw;
 
 extern crate nalgebra as na;
@@ -180,35 +181,61 @@ impl Drop for ApriltagDetection {
 ///
 /// The lifetime `'a` is requied such that the tag detector lives shorter than the tag family
 /// objects added to the detector.
-pub struct ApriltagDetector(*mut apriltag_detector);
+pub struct ApriltagDetector<'a>(*mut apriltag_detector, PhantomData<&'a apriltag_detector>);
 
-unsafe impl Send for ApriltagDetector {}
-
-impl ApriltagDetector {
+impl<'a> ApriltagDetector<'a> {
     pub fn new() -> Self {
-        unsafe { Self(apriltag_detector_create()) }
+        unsafe { Self(apriltag_detector_create(), PhantomData) }
     }
 
     pub fn new_multithreading(num_threads: usize) -> Self {
         unsafe {
             let inner = apriltag_detector_create();
             (*inner).nthreads = num_threads as raw::c_int;
-            Self(inner)
+            Self(inner, PhantomData)
         }
     }
 
-    pub fn add_family(&mut self, tag_family: &mut ApriltagFamilyType) {
+    pub fn add_family(self, tag_family: &'a mut ApriltagFamilyType) -> Self {
         unsafe { apriltag_detector_add_family_bits(self.0, tag_family.c_type, 2) }
+        self
     }
 
-    pub fn remove_family(&mut self, tag_family: &mut ApriltagFamilyType) {
+    pub fn remove_family(self, tag_family: &'a mut ApriltagFamilyType) -> Self {
         unsafe { apriltag_detector_remove_family(self.0, tag_family.c_type) }
+        self
     }
 
-    pub fn clear_families(&mut self) {
+    pub fn clear_families(self) -> Self {
         unsafe {
             apriltag_detector_clear_families(self.0);
         }
+        self
+    }
+
+    /// Sets the `quad_sigma` parameter in the apriltag detector.
+    /// 
+    /// When `quad_sigma` is not 0.0, the image will go through preprocessing, whose effect
+    /// depends on the sign of `quad_sigma`.
+    /// 
+    /// - When `quad_sigma` is greater than 0, a gaussian blur filter with standard deviation
+    ///   `quad_sigma` (in pixels) will be applied to the image.
+    /// - When `quad_sigma` is less than 0, the blurred image will be subtracted from the
+    ///   original image to sharpen its edges.
+    pub fn quad_sigma(self, quad_sigma: f32) -> Self {
+        unsafe { (*self.0).quad_sigma = quad_sigma; }
+        self
+    }
+
+    /// Quad decimate is the scaling factor applied to the image during preprocessing. For
+    /// example, a decimate factor of 2 will downscale the image to half of its original size
+    /// during preprocessing.
+    /// 
+    /// A larger decimate factor will speed up the detection process at the price of sacrificing
+    /// the detection precision.
+    pub fn quad_decimate(self, quad_decimate: f32) -> Self {
+        unsafe { (*self.0).quad_decimate = quad_decimate; }
+        self
     }
 
     pub fn detect(&self, img: &mut image_u8) -> Vec<ApriltagDetection> {
@@ -240,7 +267,7 @@ impl ApriltagDetector {
     }
 }
 
-impl Drop for ApriltagDetector {
+impl<'a> Drop for ApriltagDetector<'a> {
     fn drop(&mut self) {
         unsafe {
             apriltag_detector_destroy(self.0);

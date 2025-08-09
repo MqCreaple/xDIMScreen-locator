@@ -4,7 +4,7 @@ use std::thread;
 use std::time::SystemTime;
 
 #[cfg(feature = "visualize")]
-use opencv::highgui;
+use opencv::{core, highgui};
 use opencv::prelude::*;
 use opencv::imgproc;
 
@@ -31,7 +31,7 @@ pub fn locator_thread_main<'a>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut last_recorded_timestamp = SystemTime::UNIX_EPOCH;
     while !termination_signal.load(Ordering::Relaxed) {
-        let shared_frame_mat = loop {
+        let mut shared_frame_mat = loop {
             // park the thread and wait for the camera thread to unpark it
             thread::park();
             // when unparked, read the camera frame
@@ -73,7 +73,7 @@ pub fn locator_thread_main<'a>(
                     )?;
                 }
             }
-            highgui::imshow("window", &frame)?;
+            highgui::imshow("window", &shared_frame_mat)?;
         }
 
         object_locator.locate_objects(

@@ -51,11 +51,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         camera_prop.resolution.1 as f64,
     )?;
 
-    // apriltag detector
-    let mut family = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
-    let mut detector = ApriltagDetector::new_multithreading(4);
-    detector.add_family(&mut family);
-
     // load objects
     let mut locator = TaggedObjectLocator::new(camera_prop);
     let handheld_screen = load_object_from_resources(
@@ -98,6 +93,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         let termination_signal_clone = termination_signal.clone();
         let shared_frame_clone = shared_frame.clone();
         let locator_thread = s.spawn(move || {
+            // construct the apriltag detector in the locator thread
+            let mut family = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
+            let detector = ApriltagDetector::new_multithreading(4)
+                .add_family(&mut family)
+                .quad_sigma(-10.0);
+
             locator_thread_main(
                 termination_signal_clone,
                 shared_frame_clone,
