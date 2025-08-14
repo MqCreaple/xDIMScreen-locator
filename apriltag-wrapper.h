@@ -12,5 +12,6 @@
 
 #include "ext/apriltag/common/image_types.h"
 #include "ext/apriltag/common/image_u8.h"
+#include "ext/apriltag/common/image_u8_parallel.h"
 #include "ext/apriltag/common/image_u8x3.h"
 #include "ext/apriltag/common/image_u8x4.h"

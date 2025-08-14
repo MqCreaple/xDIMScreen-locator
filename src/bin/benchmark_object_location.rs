@@ -1,4 +1,11 @@
-use std::{env, fs::{self, File}, io::{Read, Write}, net::TcpStream, path::Path, time::SystemTime};
+use std::{
+    env,
+    fs::{self, File},
+    io::{Read, Write},
+    net::TcpStream,
+    path::Path,
+    time::SystemTime,
+};
 
 use xDIMScreen_locator::net::packet::ObjectLocationPacket;
 
@@ -12,10 +19,10 @@ struct Sample {
 fn read_line(stream: &mut impl Read) -> Result<String, std::io::Error> {
     let mut buf = [0u8; 1024];
     let mut len = 0;
-    stream.read(&mut buf[len..len+1])?;
+    stream.read(&mut buf[len..len + 1])?;
     while len < 1024 && buf[len] != b'\n' {
         len += 1;
-        stream.read(&mut buf[len..len+1])?;
+        stream.read(&mut buf[len..len + 1])?;
     }
     Ok(String::from_utf8_lossy(&buf[0..len]).into_owned())
 }
@@ -44,7 +51,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     while index < N_SAMPLES {
         let line = read_line(&mut stream)?;
         let packet: ObjectLocationPacket = serde_json::from_str(&line)?;
-        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_millis();
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)?
+            .as_millis();
         if index == 0 || samples[index - 1].timestamp_sent != packet.time {
             samples[index] = Sample {
                 timestamp_sent: packet.time,
@@ -63,23 +72,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // save the result to CSV
     log::info!("Finished recording samples. Saving to CSV...");
     let mut csv_file = File::create(benchmark_dir.join("samples.csv"))?;
-    writeln!(csv_file, "timestamp sent,timestamp received,number of objects")?;
+    writeln!(
+        csv_file,
+        "timestamp sent,timestamp received,number of objects"
+    )?;
     for sample in samples {
-        writeln!(csv_file, "{},{},{}", sample.timestamp_sent, sample.timestamp_recv, sample.num_objects)?;
+        writeln!(
+            csv_file,
+            "{},{},{}",
+            sample.timestamp_sent, sample.timestamp_recv, sample.num_objects
+        )?;
     }
     log::info!("Finished saving to CSV file.");
 
     // statistics
-    let total_send_recv_delay = samples.iter()
+    let total_send_recv_delay = samples
+        .iter()
         .map(|sample| sample.timestamp_recv - sample.timestamp_sent)
         .sum::<u128>() as f64;
     let mean_send_recv_delay = total_send_recv_delay / (N_SAMPLES as f64);
-    log::info!("Average delay between timestamp is: {:.2} ms", mean_send_recv_delay);
-    let sum_square_send_recv_delay = samples.iter()
-        .map(|sample| ((sample.timestamp_recv - sample.timestamp_sent) as f64 - mean_send_recv_delay))
+    log::info!(
+        "Average delay between timestamp is: {:.2} ms",
+        mean_send_recv_delay
+    );
+    let sum_square_send_recv_delay = samples
+        .iter()
+        .map(|sample| {
+            ((sample.timestamp_recv - sample.timestamp_sent) as f64 - mean_send_recv_delay)
+        })
         .map(|x| x * x)
         .sum::<f64>();
     let std_send_recv_delay = f64::sqrt(sum_square_send_recv_delay / (N_SAMPLES as f64 - 1.0));
-    log::info!("Standard deviation of delay between timestamp is: {:.2} ms", std_send_recv_delay);
+    log::info!(
+        "Standard deviation of delay between timestamp is: {:.2} ms",
+        std_send_recv_delay
+    );
     Ok(())
 }

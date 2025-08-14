@@ -3,10 +3,10 @@ use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;
 use std::time::SystemTime;
 
+use opencv::imgproc;
+use opencv::prelude::*;
 #[cfg(feature = "visualize")]
 use opencv::{core, highgui};
-use opencv::prelude::*;
-use opencv::imgproc;
 
 use crate::tag::apriltag::ImageU8View;
 

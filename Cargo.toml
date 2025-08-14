@@ -38,3 +38,7 @@ harness = false
 [[bench]]
 name = "camera"
 harness = false
+
+[[bench]]
+name = "apriltag-parallel"
+harness = false

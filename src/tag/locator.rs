@@ -82,6 +82,21 @@ impl<'a> TaggedObjectLocator<'a> {
         Ok(())
     }
 
+    pub fn get_object_map(&self) -> HashMap<String, Vec<(TagIndex, TagLocation)>> {
+        self.registry
+            .iter()
+            .map(|obj| {
+                (
+                    obj.name.clone(),
+                    obj.tags
+                        .iter()
+                        .map(|(i, loc)| (i.clone(), loc.clone()))
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect()
+    }
+
     fn locate_single_object<'b, 'c>(
         &self,
         detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)],

@@ -11,5 +11,5 @@
         "*.tagobj": "json"
     },
     "cmake.ignoreCMakeListsMissing": true,
-    "rust-analyzer.cargo.features": [],
+    "rust-analyzer.cargo.features": ["visualize"],
 }

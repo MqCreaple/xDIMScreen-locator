@@ -18,8 +18,12 @@ use xDIMScreen_locator::tag::locator::{LocatedObjects, TaggedObjectLocator};
 use xDIMScreen_locator::tag::locator_thread_main;
 use xDIMScreen_locator::tag::tagged_object::{TagIndex, TaggedObject};
 
+#[cfg(feature = "visualize")]
+use xDIMScreen_locator::visualize::visualize_thread_main;
+
 fn load_object_from_resources(
     file_name: &'static str,
+    object_name: &'static str,
     id_map: HashMap<String, TagIndex>,
 ) -> Result<TaggedObject, Box<dyn std::error::Error>> {
     let tagobj_file = Path::new(&env::current_dir()?)
@@ -28,7 +32,7 @@ fn load_object_from_resources(
         .join(file_name);
     let tagobj_file_path = tagobj_file.to_str().unwrap().to_string();
     let tagobj_json: serde_json::Value = serde_json::from_reader(File::open(tagobj_file)?)?;
-    let ret = TaggedObject::new_from_json("handheld screen", &tagobj_json, &id_map)?;
+    let ret = TaggedObject::new_from_json(object_name, &tagobj_json, &id_map)?;
     log::info!("Successfully loaded tagobj file {}", tagobj_file_path);
     Ok(ret)
 }
@@ -55,6 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut locator = TaggedObjectLocator::new(camera_prop);
     let handheld_screen = load_object_from_resources(
         "handheld-screen.tagobj",
+        "handheld screen",
         hash_map! {
             "UL".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 0),
             "UR".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 1),
@@ -65,6 +70,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     locator.add(&handheld_screen)?;
     let wand = load_object_from_resources(
         "wand.tagobj",
+        "wand",
         hash_map! {
             "U".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 120),
             "R".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 121),
@@ -92,6 +98,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         // start locator thread
         let termination_signal_clone = termination_signal.clone();
         let shared_frame_clone = shared_frame.clone();
+        let located_objects_clone = located_objects.clone();
+        #[cfg(feature = "visualize")]
+        let object_map = locator.get_object_map(); // this object need to be created before locator thread launches
         let locator_thread = s.spawn(move || {
             // construct the apriltag detector in the locator thread
             let mut family = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
@@ -104,19 +113,27 @@ fn main() -> Result<(), Box<dyn Error>> {
                 shared_frame_clone,
                 detector,
                 locator,
-                located_objects,
+                located_objects_clone,
             )
             .unwrap();
         });
 
         // start camera thread
-        camera_thread_main(
-            termination_signal,
-            cam,
-            shared_frame,
-            vec![locator_thread.thread()],
-        )
-        .unwrap();
+        let _ = s.spawn(move || {
+            camera_thread_main(
+                termination_signal,
+                cam,
+                shared_frame,
+                vec![locator_thread.thread()],
+            )
+            .unwrap();
+        });
+
+        // start visualize thread
+        #[cfg(feature = "visualize")]
+        let located_objects_clone = located_objects.clone();
+        #[cfg(feature = "visualize")]
+        visualize_thread_main(object_map, located_objects_clone).unwrap(); // visualizer must be in the main thread
     });
 
     Ok(())

@@ -6,4 +6,6 @@ pub mod camera;
 pub mod facial;
 pub mod net;
 pub mod tag;
+
+#[cfg(feature = "visualize")]
 pub mod visualize;

@@ -16,8 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // create a tag detector with tag36h11 family
     let mut tag_family = apriltag::ApriltagFamilyType::new(apriltag::ApriltagFamily::Tag36h11);
-    let detector = apriltag::ApriltagDetector::new_multithreading(4)
-        .add_family(&mut tag_family);
+    let detector = apriltag::ApriltagDetector::new_multithreading(4).add_family(&mut tag_family);
 
     loop {
         let mut frame = Mat::default();

@@ -214,27 +214,31 @@ impl<'a> ApriltagDetector<'a> {
     }
 
     /// Sets the `quad_sigma` parameter in the apriltag detector.
-    /// 
+    ///
     /// When `quad_sigma` is not 0.0, the image will go through preprocessing, whose effect
     /// depends on the sign of `quad_sigma`.
-    /// 
+    ///
     /// - When `quad_sigma` is greater than 0, a gaussian blur filter with standard deviation
     ///   `quad_sigma` (in pixels) will be applied to the image.
     /// - When `quad_sigma` is less than 0, the blurred image will be subtracted from the
     ///   original image to sharpen its edges.
     pub fn quad_sigma(self, quad_sigma: f32) -> Self {
-        unsafe { (*self.0).quad_sigma = quad_sigma; }
+        unsafe {
+            (*self.0).quad_sigma = quad_sigma;
+        }
         self
     }
 
     /// Quad decimate is the scaling factor applied to the image during preprocessing. For
     /// example, a decimate factor of 2 will downscale the image to half of its original size
     /// during preprocessing.
-    /// 
+    ///
     /// A larger decimate factor will speed up the detection process at the price of sacrificing
     /// the detection precision.
     pub fn quad_decimate(self, quad_decimate: f32) -> Self {
-        unsafe { (*self.0).quad_decimate = quad_decimate; }
+        unsafe {
+            (*self.0).quad_decimate = quad_decimate;
+        }
         self
     }
 
