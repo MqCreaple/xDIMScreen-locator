@@ -13,11 +13,11 @@ use crate::tag::error::ConflictingTagError;
 use crate::tag::tagged_object::{TagIndex, TagLocation, TaggedObject};
 
 pub const TAG_CORNERS: [na::Point3<f64>; 5] = [
-    na::Point3::new(-1.0, -1.0, 0.0),
-    na::Point3::new(1.0, -1.0, 0.0),
-    na::Point3::new(1.0, 1.0, 0.0),
     na::Point3::new(-1.0, 1.0, 0.0),
-    na::Point3::new(-1.0, -1.0, 0.0), // add the first point again to make drawing the tag easier
+    na::Point3::new(1.0, 1.0, 0.0),
+    na::Point3::new(1.0, -1.0, 0.0),
+    na::Point3::new(-1.0, -1.0, 0.0),
+    na::Point3::new(-1.0, 1.0, 0.0), // add the first point again to make drawing the tag easier
 ];
 
 pub struct TaggedObjectLocator<'a> {

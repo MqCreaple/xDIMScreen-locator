@@ -157,7 +157,20 @@ impl ApriltagDetection {
     }
 
     pub fn homography(&self) -> na::Matrix3<f64> {
-        todo!("Conversion from apriltag::Matd to nalgebra::Matrix3 is not yet implemented")
+        unsafe {
+            let homography = (*self.0).H;
+            na::Matrix3::new(
+                apriltag_binding::matd_get(homography, 0, 0),
+                apriltag_binding::matd_get(homography, 0, 1),
+                apriltag_binding::matd_get(homography, 0, 2),
+                apriltag_binding::matd_get(homography, 1, 0),
+                apriltag_binding::matd_get(homography, 1, 1),
+                apriltag_binding::matd_get(homography, 1, 2),
+                apriltag_binding::matd_get(homography, 2, 0),
+                apriltag_binding::matd_get(homography, 2, 1),
+                apriltag_binding::matd_get(homography, 2, 2),
+            )
+        }
     }
 
     pub fn center(&self) -> na::Vector2<f64> {
