@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::ops::{Range, RangeInclusive};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
@@ -11,17 +10,9 @@ use plotters::prelude::*;
 
 extern crate nalgebra as na;
 
-use crate::tag::locator;
+use crate::tag::locator::{self, TAG_CORNERS};
 use crate::tag::tagged_object::{TagIndex, TagLocation};
 use crate::visualize::utils::generate_random_color;
-
-const TAG_CORNERS: [na::Point3<f64>; 5] = [
-    na::Point3::new(-1.0, -1.0, 0.0),
-    na::Point3::new(1.0, -1.0, 0.0),
-    na::Point3::new(1.0, 1.0, 0.0),
-    na::Point3::new(-1.0, 1.0, 0.0),
-    na::Point3::new(-1.0, -1.0, 0.0),
-];
 
 /// A chart to visualize the located objects.
 ///

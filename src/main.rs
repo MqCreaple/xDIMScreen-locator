@@ -99,8 +99,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         let termination_signal_clone = termination_signal.clone();
         let shared_frame_clone = shared_frame.clone();
         let located_objects_clone = located_objects.clone();
+
         #[cfg(feature = "visualize")]
         let object_map = locator.get_object_map(); // this object need to be created before locator thread launches
+
         let locator_thread = s.spawn(move || {
             // construct the apriltag detector in the locator thread
             let mut family = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);

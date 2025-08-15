@@ -10,6 +10,8 @@ use opencv::{core, highgui};
 
 use crate::tag::apriltag::ImageU8View;
 
+extern crate nalgebra as na;
+
 /// A utility module for binding to the apriltag C library
 pub mod apriltag;
 
@@ -29,6 +31,11 @@ pub fn locator_thread_main<'a>(
     mut object_locator: locator::TaggedObjectLocator<'a>,
     located_objects: Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(feature = "visualize")]
+    let object_map = object_locator.get_object_map();
+    #[cfg(feature = "visualize")]
+    let camera_mat = object_locator.camera().camera_mat_na()?;
+
     let mut last_recorded_timestamp = SystemTime::UNIX_EPOCH;
     while !termination_signal.load(Ordering::Relaxed) {
         let mut shared_frame_mat = loop {
@@ -55,10 +62,18 @@ pub fn locator_thread_main<'a>(
         let mut image = ImageU8View::from(&mut gray);
         let detections = detector.detect(image.inner_mut());
 
+        object_locator.locate_objects(
+            last_recorded_timestamp,
+            detections.as_slice(),
+            located_objects.clone(),
+        )?;
+
         #[cfg(feature = "visualize")]
         {
+            use crate::tag::locator::TAG_CORNERS;
+
+            // draw the detected apriltag on the frame
             for detection in &detections {
-                // draw the detected apriltag on the frame
                 for i in 0..4 {
                     let start_pt = detection.corners()[i];
                     let end_pt = detection.corners()[(i + 1) % 4];
@@ -73,17 +88,72 @@ pub fn locator_thread_main<'a>(
                     )?;
                 }
             }
+            // draw each tag's reprojection on the image
+            let lock = located_objects.0.lock().unwrap();
+            for (name, loc) in lock.name_map() {
+                if let Some(object) = object_map.get(*name) {
+                    let color = crate::visualize::utils::generate_random_color(name);
+                    // plot the reprojection of all tags
+                    for (_, tag_loc) in object {
+                        let corners = TAG_CORNERS
+                            .iter()
+                            .map(|point| {
+                                let point1 = tag_loc.0.transform_point(point);
+                                let point2 = loc.transform_point(&point1);
+                                let projected = camera_mat * point2;
+                                projected.xy() / projected.z
+                            })
+                            .collect::<Vec<_>>();
+                        for i in 0..4 {
+                            imgproc::line(
+                                &mut shared_frame_mat,
+                                core::Point::new(corners[i].x as i32, corners[i].y as i32),
+                                core::Point::new(corners[i + 1].x as i32, corners[i + 1].y as i32),
+                                core::Scalar::new(
+                                    color.2 as f64,
+                                    color.1 as f64,
+                                    color.0 as f64, // in the order of BGR
+                                    0.0,
+                                ),
+                                2,
+                                imgproc::LINE_8,
+                                0,
+                            )?;
+                        }
+                        // plot the x, y, and z axes of each tag
+                        for i in 0..3 {
+                            use crate::visualize::utils::{AXES, AXES_COLORS};
+
+                            let axis_origin = camera_mat
+                                * loc.transform_point(
+                                    &tag_loc.0.transform_point(&na::Point3::origin()),
+                                );
+                            let axis_origin = axis_origin.xy() / axis_origin.z;
+                            let axis_end = camera_mat
+                                * loc.transform_point(&tag_loc.0.transform_point(&AXES[i]));
+                            let axis_end = axis_end.xy() / axis_end.z;
+                            let color = AXES_COLORS[i];
+                            imgproc::line(
+                                &mut shared_frame_mat,
+                                core::Point::new(axis_origin.x as i32, axis_origin.y as i32),
+                                core::Point::new(axis_end.x as i32, axis_end.y as i32),
+                                core::Scalar::new(
+                                    color.2 as f64,
+                                    color.1 as f64,
+                                    color.0 as f64,
+                                    0.0,
+                                ), // in the order of BGR
+                                2,
+                                imgproc::LINE_8,
+                                0,
+                            )?;
+                        }
+                    }
+                }
+            }
+            drop(lock);
+            // show image
             highgui::imshow("window", &shared_frame_mat)?;
-        }
-
-        object_locator.locate_objects(
-            last_recorded_timestamp,
-            detections.as_slice(),
-            located_objects.clone(),
-        )?;
-
-        #[cfg(feature = "visualize")]
-        {
             // wait for exit key
             let key = highgui::wait_key(1)?;
             if key > 0 && key != 255 {

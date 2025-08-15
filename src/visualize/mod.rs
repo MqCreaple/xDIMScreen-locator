@@ -7,7 +7,7 @@ use crate::tag::tagged_object::{TagIndex, TagLocation};
 use crate::{tag::locator, visualize::chart::VisualizeChart};
 
 pub mod chart;
-mod utils;
+pub mod utils;
 
 pub fn visualize_thread_main<'a>(
     object_map: HashMap<String, Vec<(TagIndex, TagLocation)>>,

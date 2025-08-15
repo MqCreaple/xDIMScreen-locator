@@ -11,6 +11,8 @@ use opencv::{
     videoio,
 };
 
+extern crate nalgebra as na;
+
 pub struct CameraProperty {
     pub resolution: (u32, u32),
     pub fov: (Option<f64>, Option<f64>),
@@ -89,6 +91,22 @@ impl CameraProperty {
 
     pub fn camera_mat(&self) -> &Mat {
         &self.camera_mat
+    }
+
+    pub fn camera_mat_na(&self) -> Result<na::Matrix3<f64>, Box<dyn std::error::Error>> {
+        unsafe {
+            Ok(na::Matrix3::new(
+                *self.camera_mat.at_2d_unchecked(0, 0)?,
+                *self.camera_mat.at_2d_unchecked(0, 1)?,
+                *self.camera_mat.at_2d_unchecked(0, 2)?,
+                *self.camera_mat.at_2d_unchecked(1, 0)?,
+                *self.camera_mat.at_2d_unchecked(1, 1)?,
+                *self.camera_mat.at_2d_unchecked(1, 2)?,
+                *self.camera_mat.at_2d_unchecked(2, 0)?,
+                *self.camera_mat.at_2d_unchecked(2, 1)?,
+                *self.camera_mat.at_2d_unchecked(2, 2)?,
+            ))
+        }
     }
 }
 

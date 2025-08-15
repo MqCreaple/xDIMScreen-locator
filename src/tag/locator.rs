@@ -12,6 +12,14 @@ use crate::tag::apriltag;
 use crate::tag::error::ConflictingTagError;
 use crate::tag::tagged_object::{TagIndex, TagLocation, TaggedObject};
 
+pub const TAG_CORNERS: [na::Point3<f64>; 5] = [
+    na::Point3::new(-1.0, -1.0, 0.0),
+    na::Point3::new(1.0, -1.0, 0.0),
+    na::Point3::new(1.0, 1.0, 0.0),
+    na::Point3::new(-1.0, 1.0, 0.0),
+    na::Point3::new(-1.0, -1.0, 0.0), // add the first point again to make drawing the tag easier
+];
+
 pub struct TaggedObjectLocator<'a> {
     /// Camera matrix
     camera: CameraProperty,
@@ -60,6 +68,10 @@ impl<'a> TaggedObjectLocator<'a> {
         }
     }
 
+    pub fn camera(&self) -> &CameraProperty {
+        &self.camera
+    }
+
     /// Add a new tagged object to the registry.
     pub fn add(&mut self, tagobj: &'a TaggedObject) -> Result<(), ConflictingTagError> {
         let this_name = &tagobj.name;
@@ -101,13 +113,6 @@ impl<'a> TaggedObjectLocator<'a> {
         &self,
         detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)],
     ) -> Result<na::Isometry3<f64>, Box<dyn std::error::Error>> {
-        const TAG_CORNERS: [na::Point3<f64>; 4] = [
-            na::Point3::new(-1.0, 1.0, 0.0),
-            na::Point3::new(1.0, 1.0, 0.0),
-            na::Point3::new(1.0, -1.0, 0.0),
-            na::Point3::new(-1.0, -1.0, 0.0),
-        ];
-
         let mut object_points_data = Vec::<f64>::with_capacity(detections.len() * 12); // `detections.len()` (tags) * `4` (vertices / tag) * `3` (coordinates / vertex)
         let mut image_points_data = Vec::<f64>::with_capacity(detections.len() * 8);
         for (detection, tag_location) in detections {

@@ -15,6 +15,7 @@ use plotters::chart::ChartBuilder;
 use plotters::prelude::*;
 use plotters::series::LineSeries;
 use xDIMScreen_locator::tag::apriltag::*;
+use xDIMScreen_locator::tag::locator::TAG_CORNERS;
 use xDIMScreen_locator::tag::tagged_object::{TagIndex, TaggedObject};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -124,13 +125,6 @@ impl VisualizeChart {
                 // Draw series here
                 for (_, location) in &tagobj.tags {
                     // Extract all the corner points
-                    const TAG_CORNERS: [na::Point3<f64>; 5] = [
-                        na::Point3::new(-1.0, -1.0, 0.0),
-                        na::Point3::new(1.0, -1.0, 0.0),
-                        na::Point3::new(1.0, 1.0, 0.0),
-                        na::Point3::new(-1.0, 1.0, 0.0),
-                        na::Point3::new(-1.0, -1.0, 0.0),
-                    ];
                     chart
                         .draw_series(LineSeries::new(
                             TAG_CORNERS.iter().map(|point| {
