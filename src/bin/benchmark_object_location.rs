@@ -97,9 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     let sum_square_send_recv_delay = samples
         .iter()
-        .map(|sample| {
-            ((sample.timestamp_recv - sample.timestamp_sent) as f64 - mean_send_recv_delay)
-        })
+        .map(|sample| (sample.timestamp_recv - sample.timestamp_sent) as f64 - mean_send_recv_delay)
         .map(|x| x * x)
         .sum::<f64>();
     let std_send_recv_delay = f64::sqrt(sum_square_send_recv_delay / (N_SAMPLES as f64 - 1.0));

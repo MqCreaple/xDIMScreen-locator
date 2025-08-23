@@ -18,7 +18,7 @@ fn main() -> Result<()> {
         if frame.size()?.width > 0 {
             highgui::imshow(window1, &frame)?;
             // round each pixel's RGB color to either 0 or 255
-            for (i, elem) in frame.iter_mut::<Point3_<u8>>()? {
+            for (_i, elem) in frame.iter_mut::<Point3_<u8>>()? {
                 elem.x = if elem.x < 128 { 0 } else { 255 };
                 elem.y = if elem.y < 128 { 0 } else { 255 };
                 elem.z = if elem.z < 128 { 0 } else { 255 };
