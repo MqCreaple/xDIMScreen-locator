@@ -3,31 +3,18 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     let project_root = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let apriltag_root = Path::new(&project_root).join("ext").join("apriltag");
     println!(
-        "cargo:rustc-link-search={}",
-        Path::new(&project_root)
-            .join("ext")
-            .join("apriltag")
-            .join("build")
-            .display()
+        "cargo:rustc-link-search=native={}",
+        apriltag_root.join("build").display()
     );
     println!(
-        "cargo:rustc-link-search={}",
-        Path::new(&project_root)
-            .join("ext")
-            .join("apriltag")
-            .join("build")
-            .join("Debug")
-            .display()
+        "cargo:rustc-link-search=native={}",
+        apriltag_root.join("build").join("Debug").display()
     );
     println!(
-        "cargo:rustc-link-search={}",
-        Path::new(&project_root)
-            .join("ext")
-            .join("apriltag")
-            .join("build")
-            .join("Release")
-            .display()
+        "cargo:rustc-link-search=native={}",
+        apriltag_root.join("build").join("Release").display()
     );
     if cfg!(debug_assertions) {
         println!("cargo:rustc-link-lib=static=apriltagd");

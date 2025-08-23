@@ -37,7 +37,7 @@ If you encounter any problem related to OpenCV, please refer to the [troubleshoo
 cd ext/apriltag
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_PYTHON_WRAPPER=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF ..
+cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_PYTHON_WRAPPER=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF ..
 cmake --build . --config Release
 ```
 
