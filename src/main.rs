@@ -56,7 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
 
     // load objects
-    let mut locator = TaggedObjectLocator::new(camera_prop);
+    let mut locator = TaggedObjectLocator::new(camera_prop.clone());
     let handheld_screen = load_object_from_resources(
         "handheld-screen.tagobj",
         "handheld screen",
@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         #[cfg(feature = "visualize")]
         let located_objects_clone = located_objects.clone();
         #[cfg(feature = "visualize")]
-        visualize_thread_main(object_map, located_objects_clone).unwrap(); // visualizer must be in the main thread
+        visualize_thread_main(camera_prop, object_map, located_objects_clone).unwrap(); // visualizer must be in the main thread
     });
 
     Ok(())

@@ -3,13 +3,17 @@ use std::{
     sync::{Arc, Condvar, Mutex},
 };
 
-use crate::tag::tagged_object::{TagIndex, TagLocation};
+use crate::{
+    camera::CameraProperty,
+    tag::tagged_object::{TagIndex, TagLocation},
+};
 use crate::{tag::locator, visualize::chart::VisualizeChart};
 
 pub mod chart;
 pub mod utils;
 
 pub fn visualize_thread_main<'a>(
+    camera: CameraProperty,
     object_map: HashMap<String, Vec<(TagIndex, TagLocation)>>,
     located_objects: Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -20,6 +24,7 @@ pub fn visualize_thread_main<'a>(
         Box::new(|cc| {
             Ok(Box::new(VisualizeChart::new(
                 cc,
+                camera,
                 object_map,
                 located_objects,
                 30.0,

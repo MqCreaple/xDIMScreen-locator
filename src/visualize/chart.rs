@@ -1,16 +1,19 @@
 use std::collections::HashMap;
 use std::ops::{Range, RangeInclusive};
 use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
 use std::time::Duration;
+use std::{f64, thread};
 
 use egui::{CentralPanel, Visuals};
 use egui_plotter::{Chart, MouseConfig};
+use plotters::element::PointCollection;
 use plotters::prelude::*;
+use statrs::distribution::{self, ContinuousCDF};
 
 extern crate nalgebra as na;
 
-use crate::tag::locator::{self, TAG_CORNERS};
+use crate::camera::CameraProperty;
+use crate::tag::locator::{self, TAG_CORNERS, TaggedObjectLocator};
 use crate::tag::tagged_object::{TagIndex, TagLocation};
 use crate::visualize::utils::generate_random_color;
 
@@ -29,6 +32,7 @@ fn to_f64_range(range: &RangeInclusive<i32>) -> Range<f64> {
 impl<'a> VisualizeChart<'a> {
     pub fn new(
         cc: &eframe::CreationContext<'_>,
+        camera: CameraProperty,
         object_map: HashMap<String, Vec<(TagIndex, TagLocation)>>,
         located_objects: Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>,
         fps: f64,
@@ -76,6 +80,11 @@ impl<'a> VisualizeChart<'a> {
                     .label("z axis");
 
                 // plot all located objects
+                let std_normal_distr = distribution::Normal::standard();
+                const CONFIDENCE_LEVEL: f64 = 0.95;
+                let cbrt_confidence_lvl = CONFIDENCE_LEVEL.cbrt();
+                let ellipsoid_scale = std_normal_distr.inverse_cdf(cbrt_confidence_lvl);  // these are for plotting the ellipsoid
+
                 let located_objects_lock = data.0.lock().unwrap();
                 for (name, loc) in located_objects_lock.name_map() {
                     if let Some(object) = object_map.get(*name) {
@@ -94,11 +103,82 @@ impl<'a> VisualizeChart<'a> {
                                 ))
                                 .unwrap();
                         }
+                        // plot an ellipsoid representing the confidence regions of the located objects
+                        let cov_mat = TaggedObjectLocator::calculate_covariance(
+                            camera.camera_mat_na().unwrap(),
+                            object.iter().map(|(_, b)| b.clone()),
+                            *loc,
+                            (2.0, 2.0), // variance of 2 pixel
+                        )
+                        .unwrap();
+                        Self::plot_ellipsoid(
+                            &mut chart,
+                            loc.translation.vector,
+                            cov_mat.try_inverse().unwrap(),
+                            ellipsoid_scale,
+                            64,
+                            &BLACK,
+                        )
+                        .unwrap();
                     }
                 }
             }));
 
         Self { chart, fps }
+    }
+
+    /// Draw an ellipsoid centered at `center` with `mat` describing its shape.
+    ///
+    /// The ellipsoid's formula can be written as:
+    ///
+    /// $$(x - c)^T \mathbf{Q} (x - c) = S^2$$
+    ///
+    /// Where $c$ is `center`, $Q$ is `mat`, and $S$ is `scale`.
+    ///
+    /// The matrix $Q$ does not need to be symmetric, as this function will replace $Q$ with
+    /// $\frac{1}{2}(Q + Q^T)$.
+    ///
+    /// `resolution` defines the number of points to sample on each arc.
+    fn plot_ellipsoid<DB: DrawingBackend, CT: CoordTranslate, S: Into<ShapeStyle> + Clone>(
+        chart: &mut ChartContext<'_, DB, CT>,
+        center: na::Vector3<f64>,
+        mut mat: na::Matrix3<f64>,
+        scale: f64,
+        resolution: usize,
+        style: S,
+    ) -> Result<(), DrawingAreaErrorKind<DB::ErrorType>>
+    where
+        for<'b> &'b DynElement<'static, DB, (f64, f64, f64)>:
+            PointCollection<'b, <CT as plotters::coord::CoordTranslate>::From>,
+    {
+        let dt = 2.0 * f64::consts::PI / (resolution as f64);
+        mat = (mat + mat.transpose()) * 0.5;
+        let eigen = mat.symmetric_eigen();
+        for (i, j) in [(0usize, 1usize), (1, 2), (2, 0)] {
+            let vec1 = eigen.eigenvectors.column(i);
+            let val1 = unsafe { *eigen.eigenvalues.get_unchecked(i) };
+            let sqrtval1 = val1.sqrt();
+            let vec2 = eigen.eigenvectors.column(j);
+            let val2 = unsafe { *eigen.eigenvalues.get_unchecked(j) };
+            let sqrtval2 = val2.sqrt();
+            chart.draw_series(LineSeries::new(
+                (0..resolution).map(|t| {
+                    let t1 = (t as f64) * dt;
+                    let vec = center
+                        + vec1 * scale / sqrtval1 * t1.cos()
+                        + vec2 * scale / sqrtval2 * t1.sin();
+                    unsafe {
+                        (
+                            *vec.get_unchecked(0),
+                            *vec.get_unchecked(1),
+                            *vec.get_unchecked(2),
+                        )
+                    }
+                }),
+                style.clone(),
+            ))?;
+        }
+        Ok(())
     }
 }
 

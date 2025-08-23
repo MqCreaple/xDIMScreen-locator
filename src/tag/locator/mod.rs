@@ -214,16 +214,15 @@ impl<'a> TaggedObjectLocator<'a> {
     ///
     /// To calculate the projection matrix, a list of detected tags and the computed object location is
     /// required. The tag list has the same format as function `locate_single_object`.
-    pub(crate) fn calculate_projection_jacobian<'b, 'c>(
-        &self,
-        detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)],
+    pub(crate) fn calculate_projection_jacobian<D: Iterator<Item = TagLocation> + Clone>(
+        camera_mat: na::Matrix3<f64>,
+        detections: D,
         location: na::Isometry3<f64>,
     ) -> Result<na::MatrixXx3<f64>, Box<dyn std::error::Error>> {
-        let n = detections.len();
-        let camera_mat = self.camera.camera_mat_na()?;
+        let n = detections.clone().count();
         let mut d_mat = na::MatrixXx3::<f64>::zeros(8 * n);
-        for (i, (detection, tag_loc)) in detections.iter().enumerate() {
-            for (j, _) in detection.corners().iter().enumerate() {
+        for (i, tag_loc) in detections.enumerate() {
+            for j in 0..4 {
                 let index = i * 4 + j;
                 let u_index = index * 2;
                 let v_index = index * 2 + 1;
@@ -249,13 +248,13 @@ impl<'a> TaggedObjectLocator<'a> {
     /// The function takes in a pair of numbers `detection_variance`, representing the x and y variance of
     /// each detected corner. This function assumes that each corner's measured coordinate is independent
     /// and identically distributed, with no correlation between the x and y components.
-    pub fn calculate_covariance<'b, 'c>(
-        &self,
-        detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)],
+    pub fn calculate_covariance<D: Iterator<Item = TagLocation> + Clone>(
+        camera_mat: na::Matrix3<f64>,
+        detections: D,
         location: na::Isometry3<f64>,
         detection_variance: (f64, f64),
     ) -> Result<na::Matrix3<f64>, Box<dyn std::error::Error>> {
-        let jacobian = self.calculate_projection_jacobian(detections, location)?;
+        let jacobian = Self::calculate_projection_jacobian(camera_mat, detections, location)?;
         let iter = [detection_variance.0, detection_variance.1]
             .into_iter()
             .cycle();

@@ -83,13 +83,12 @@ fn test_projection_jacobian() {
         }
 
         // calculate projection jacobian
-        let detections2 = detections
-            .iter()
-            .map(|(detection, location)| (detection, location.clone()))
-            .collect::<Vec<_>>();
-        let calculated_projection_jacobian = locator
-            .calculate_projection_jacobian(&detections2, object_location)
-            .unwrap();
+        let calculated_projection_jacobian = TaggedObjectLocator::calculate_projection_jacobian(
+            locator.camera.camera_mat_na().unwrap(),
+            detections.iter().map(|(_, b)| b.clone()),
+            object_location,
+        )
+        .unwrap();
 
         assert_eq!(
             calculated_projection_jacobian.nrows(),

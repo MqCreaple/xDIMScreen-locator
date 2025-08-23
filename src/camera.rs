@@ -13,6 +13,7 @@ use opencv::{
 
 extern crate nalgebra as na;
 
+#[derive(Debug, Clone)]
 pub struct CameraProperty {
     pub resolution: (u32, u32),
     pub fov: (Option<f64>, Option<f64>),
