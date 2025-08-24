@@ -1,3 +1,11 @@
+<!--
+  -- This HTML document creates a table of apriltags with the specified tag family, size,
+  -- and ID. You can conveniently print out a paper of apriltags in order and tape them to
+  -- the places you need.
+  --
+  -- This page uses [chaitanyantr](https://github.com/chaitanyantr)'s apriltag SVG generator.
+  -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,50 +16,50 @@
         const mappings = {
             "tag16h5": {
                 "file_prefix": "tag16_05_",
-                "viewBox": "0 0 80 80",
-        		"tag_size_ratio": 6/8
+                "viewBox": "10 10 60 60",
+                "tag_size_ratio": 6/8
             },
             "tag25h9": {
                 "file_prefix": "tag25_09_",
-                "viewBox": "0 0 90 90",
-        		"tag_size_ratio": 7/9
+                "viewBox": "10 10 70 70",
+                "tag_size_ratio": 7/9
             },
             "tag36h11": {
                 "file_prefix": "tag36_11_",
-                "viewBox": "0 0 100 100",
-        		"tag_size_ratio": 8/10,
+                "viewBox": "10 10 80 80",
+                "tag_size_ratio": 8/10,
             },
             "tagCircle21h7": {
                 "file_prefix": "tag21_07_",
                 "viewBox": "0 0 90 90",
-        		"tag_size_ratio": 1.0
+                "tag_size_ratio": 1.0
             },
             "tagCircle49h12": {
                 "file_prefix": "tag49_12_",
                 "viewBox": "0 0 110 110",
-        		"tag_size_ratio": 1.0
+                "tag_size_ratio": 1.0
             },
             "tagCustom48h12": {
                 "file_prefix": "tag48_12_",
                 "viewBox": "0 0 100 100",
-        		"tag_size_ratio": 6/10,
+                "tag_size_ratio": 6/10,
             },
             "tagStandard41h12": {
                 "file_prefix": "tag41_12_",
                 "viewBox": "0 0 90 90",
-        		"tag_size_ratio": 5/9,
+                "tag_size_ratio": 5/9,
             },
             "tagStandard52h13": {
                 "file_prefix": "tag52_13_",
                 "viewBox": "0 0 100 100",
-        		"tag_size_ratio": 6/10
+                "tag_size_ratio": 6/10
             }
         }
         async function getSVGContentFromURL(url){
-	    	const res = await fetch(url);
-	    	const content = await res.text();
-	    	return content
-	    }
+            const res = await fetch(url);
+            const content = await res.text();
+            return content;
+        }
         document.addEventListener('DOMContentLoaded', async () => {
             let cols = 5;
             let rows = 24;
@@ -63,12 +71,12 @@
                 let row = document.createElement("tr");
                 for(let j = 0; j < cols; j++) {
                     let id = i * cols + j + idStartFrom;
-	                let id_str = id.toString();
-	                while(id_str.length < 5){
-	                	id_str = "0" + id_str
-	                }
-	                const tagFileName = mappings[family].file_prefix + id_str + ".svg"
-	                const url = `https://raw.githubusercontent.com/chaitanyantr/apriltag/main/${family}/${tagFileName}`
+                    let id_str = id.toString();
+                    while(id_str.length < 5){
+                        id_str = "0" + id_str
+                    }
+                    const tagFileName = mappings[family].file_prefix + id_str + ".svg";
+                    const url = `https://raw.githubusercontent.com/chaitanyantr/apriltag/main/${family}/${tagFileName}`;
                     console.log(url);
                     let td = document.createElement("td");
                     td.id = `tag-${id}`;
@@ -81,7 +89,7 @@
                         let svg = td.querySelector("svg");
                         svg.setAttribute("width", size + "mm");
                         svg.setAttribute("height", size + "mm");
-                        svg.setAttribute("viewBox", "0 0 90 90");
+                        svg.setAttribute("viewBox", mappings[family].viewBox);
                     });
                 }
                 table.appendChild(row);
@@ -94,7 +102,7 @@
             display: block;
         }
         table#tag-table tr td {
-            margin: 3px;
+            margin: 5px;
         }
         table#tag-table p {
             text-align: center;

@@ -406,7 +406,7 @@ impl Drop for ImageU8 {
 /// deallocation.
 pub struct ImageU8View<'a, T: 'a> {
     img: image_u8,
-    parent: &'a mut T,
+    _parent: &'a mut T,
 }
 
 impl<'a, T: 'a> ImageU8View<'a, T> {
@@ -457,7 +457,7 @@ impl<'a> From<&'a mut Mat> for ImageU8View<'a, Mat> {
         };
         Self {
             img: img_inner,
-            parent: value,
+            _parent: value,
         }
     }
 }
