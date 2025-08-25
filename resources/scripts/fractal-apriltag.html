@@ -70,9 +70,14 @@
             [-0.5, 1.0],
             [1.0, 1.0]
         ];
-        async function addSvg(svg, lvl, maxLvl, family, curPos, curStat, tagSize) {
-            if(lvl >= maxLvl) {
+        async function drawSquareBranchFractal(svg, lvl, family, curPos, curStat, tagSize) {
+            if(lvl < 0) {
                 return;
+            }
+            if(tagSize <= 15) {
+                family = "tag16h5";
+            } else if(tagSize <= 30) {
+                family = "tag25h9";
             }
             // curStat: -1 = the biggest tag, 0 = upright, 1 = upleft, 2 = bottomleft, 3 = bottomright
             let id_str = counter[family].toString();
@@ -101,23 +106,104 @@
                 childPos[0] += CHILD_OFFSET[childStat][0] * tagSize;
                 childPos[1] += CHILD_OFFSET[childStat][1] * tagSize;
                 let newFamily = family;
-                if(lvl >= 1) {
-                    newFamily = "tag16h5";
-                } else if(lvl >= 0) {
-                    newFamily = "tag25h9";
-                }
-                addSvg(svg, lvl + 1, maxLvl, newFamily, childPos, childStat, tagSize / 2);
+                drawSquareBranchFractal(svg, lvl - 1, newFamily, childPos, childStat, tagSize / 2);
+            }
+        }
+
+        function vecAdd(u, v) {
+            return [u[0] + v[0], u[1] + v[1]];
+        }
+
+        function vecMul(u, v) {
+            return [u[0] * v, u[1] * v];
+        }
+
+        function vecNeg(v) {
+            return [-v[0], -v[1]];
+        }
+
+        function vecLeft90Deg(v) {
+            return [-v[1], v[0]]
+        }
+
+        async function drawTagPackingFractal(svg, lvl, family, center, size, type, dir) {
+            // type: 0 = central, 1 = diagonal, 2 = other
+            if(lvl < 0) {
+                return;
+            }
+            if(size <= 15) {
+                family = "tag16h5";
+            } else if(size <= 30) {
+                family = "tag25h9";
+            }
+            let halfSize = size / 2;
+            let id_str = counter[family].toString();
+            counter[family] += 1;
+            while(id_str.length < 5){
+                id_str = "0" + id_str
+            }
+            let tagFileName = mappings[family].file_prefix + id_str + ".svg";
+            let url = `https://raw.githubusercontent.com/chaitanyantr/apriltag/main/${family}/${tagFileName}`;
+            let contentStr = await getSVGContentFromURL(url);
+            let node = document.createRange().createContextualFragment(contentStr).firstElementChild.cloneNode(true);
+            node.id = family + "-" + id_str;
+            node.setAttribute("viewBox", mappings[family].viewBox);
+            node.setAttribute("x", center[0] - halfSize);
+            node.setAttribute("y", center[1] - halfSize);
+            node.setAttribute("width", size);
+            node.setAttribute("height", size);
+            svg.appendChild(node);
+
+            // depth first search
+            if(type == 0) {
+                [[1, 0], [0, 1], [-1, 0], [0, -1]].forEach((childDir) => {
+                    drawTagPackingFractal(svg, lvl - 1, family, vecAdd(center, vecMul(childDir, 2/3 * size)), size / 3, 1, childDir);
+                });
+            } else if(type == 1) {
+                let left = vecLeft90Deg(dir);
+                let right = vecNeg(left);
+                drawTagPackingFractal(
+                    svg, lvl - 1, family,
+                    vecAdd(center, vecAdd(vecMul(left, size * 3/4), vecMul(dir, -size / 4))),
+                    halfSize, 2,
+                    vecAdd(dir, left)
+                );
+                drawTagPackingFractal(
+                    svg, lvl - 1, family,
+                    vecAdd(center, vecMul(dir, 2/3 * size)),
+                    size / 3, 1, dir
+                );
+                drawTagPackingFractal(
+                    svg, lvl - 1, family,
+                    vecAdd(center, vecAdd(vecMul(right, size * 3/4), vecMul(dir, -size / 4))),
+                    halfSize, 2,
+                    vecAdd(dir, right)
+                );
+            } else if(type == 2) {
+                drawTagPackingFractal(
+                    svg, lvl - 1, family,
+                    [center[0] + dir[0] * size * 3/4, center[1] - dir[1] * size / 4],
+                    halfSize, 2, dir,
+                );
+                drawTagPackingFractal(
+                    svg, lvl - 1, family,
+                    [center[0] - dir[0] * size / 4, center[1] + dir[1] * size * 3/4],
+                    halfSize, 2, dir,
+                );
             }
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
             let lvl = 3;
-            let centralTagSize = 60;   // unit: mm
+            let centralTagSize = 36;   // unit: mm
             let svg = document.getElementById("target");
-            svg.setAttribute("width", (centralTagSize * 3) + "mm");
-            svg.setAttribute("height", (centralTagSize * 3) + "mm");
-            svg.setAttribute("viewBox", `0 0 ${(centralTagSize * 3)} ${(centralTagSize * 3)}`);  // to ensure that the viewbox unit matches millimeter
-            addSvg(svg, 0, 3, "tag36h11", [centralTagSize, centralTagSize], -1, centralTagSize);
+            let width = (centralTagSize * 3);
+            let height = (centralTagSize * 3);
+            svg.setAttribute("width", width + "mm");
+            svg.setAttribute("height", height + "mm");
+            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);  // to ensure that the viewbox unit matches millimeter
+            // drawSquareBranchFractal(svg, 2, "tag36h11", [centralTagSize, centralTagSize], -1, centralTagSize);
+            drawTagPackingFractal(svg, 2, "tag36h11", [width/2, height/2], centralTagSize, 0, [0, 0]);
         });
     </script>
 </head>
