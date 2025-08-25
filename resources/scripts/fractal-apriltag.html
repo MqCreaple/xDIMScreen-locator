@@ -106,7 +106,7 @@
                 childPos[0] += CHILD_OFFSET[childStat][0] * tagSize;
                 childPos[1] += CHILD_OFFSET[childStat][1] * tagSize;
                 let newFamily = family;
-                drawSquareBranchFractal(svg, lvl - 1, newFamily, childPos, childStat, tagSize / 2);
+                await drawSquareBranchFractal(svg, lvl - 1, newFamily, childPos, childStat, tagSize / 2);
             }
         }
 
@@ -156,36 +156,36 @@
 
             // depth first search
             if(type == 0) {
-                [[1, 0], [0, 1], [-1, 0], [0, -1]].forEach((childDir) => {
-                    drawTagPackingFractal(svg, lvl - 1, family, vecAdd(center, vecMul(childDir, 2/3 * size)), size / 3, 1, childDir);
-                });
+                for(let childDir of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+                    await drawTagPackingFractal(svg, lvl - 1, family, vecAdd(center, vecMul(childDir, 2/3 * size)), size / 3, 1, childDir);
+                };
             } else if(type == 1) {
                 let left = vecLeft90Deg(dir);
                 let right = vecNeg(left);
-                drawTagPackingFractal(
+                await drawTagPackingFractal(
                     svg, lvl - 1, family,
                     vecAdd(center, vecAdd(vecMul(left, size * 3/4), vecMul(dir, -size / 4))),
                     halfSize, 2,
                     vecAdd(dir, left)
                 );
-                drawTagPackingFractal(
+                await drawTagPackingFractal(
                     svg, lvl - 1, family,
                     vecAdd(center, vecMul(dir, 2/3 * size)),
                     size / 3, 1, dir
                 );
-                drawTagPackingFractal(
+                await drawTagPackingFractal(
                     svg, lvl - 1, family,
                     vecAdd(center, vecAdd(vecMul(right, size * 3/4), vecMul(dir, -size / 4))),
                     halfSize, 2,
                     vecAdd(dir, right)
                 );
             } else if(type == 2) {
-                drawTagPackingFractal(
+                await drawTagPackingFractal(
                     svg, lvl - 1, family,
                     [center[0] + dir[0] * size * 3/4, center[1] - dir[1] * size / 4],
                     halfSize, 2, dir,
                 );
-                drawTagPackingFractal(
+                await drawTagPackingFractal(
                     svg, lvl - 1, family,
                     [center[0] - dir[0] * size / 4, center[1] + dir[1] * size * 3/4],
                     halfSize, 2, dir,
@@ -203,7 +203,15 @@
             svg.setAttribute("height", height + "mm");
             svg.setAttribute("viewBox", `0 0 ${width} ${height}`);  // to ensure that the viewbox unit matches millimeter
             // drawSquareBranchFractal(svg, 2, "tag36h11", [centralTagSize, centralTagSize], -1, centralTagSize);
-            drawTagPackingFractal(svg, 2, "tag36h11", [width/2, height/2], centralTagSize, 0, [0, 0]);
+            await drawTagPackingFractal(svg, 2, "tag36h11", [width/2, height/2], centralTagSize, 0, [0, 0]);
+            
+            // draw tag boundary
+            svg.innerHTML += `<path d="M ${width/2-centralTagSize-1} ${height/2}
+                L ${width/2} ${height/2+centralTagSize+1}
+                L ${width/2+centralTagSize+1} ${height/2}
+                L ${width/2} ${height/2-centralTagSize-1}
+                Z"
+                stroke="gray" stroke-width="0.5" fill="none" />`;
         });
     </script>
 </head>
