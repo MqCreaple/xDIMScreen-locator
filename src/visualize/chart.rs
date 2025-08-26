@@ -83,7 +83,7 @@ impl<'a> VisualizeChart<'a> {
                 let std_normal_distr = distribution::Normal::standard();
                 const CONFIDENCE_LEVEL: f64 = 0.95;
                 let cbrt_confidence_lvl = CONFIDENCE_LEVEL.cbrt();
-                let ellipsoid_scale = std_normal_distr.inverse_cdf(cbrt_confidence_lvl);  // these are for plotting the ellipsoid
+                let ellipsoid_scale = std_normal_distr.inverse_cdf(cbrt_confidence_lvl); // these are for plotting the ellipsoid
 
                 let located_objects_lock = data.0.lock().unwrap();
                 for (name, loc) in located_objects_lock.name_map() {

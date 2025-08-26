@@ -80,6 +80,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
     )?;
     locator.add(&wand)?;
+    let fractal_tag = load_object_from_resources(
+        "fractal-tag.tagobj",
+        "fractal tag",
+        hash_map! {
+            "0".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 10),
+            "1".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 0),
+            "2".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 1),
+            "3".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 2),
+            "4".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 3),
+        },
+    )?;
+    locator.add(&fractal_tag)?;
 
     // A thread scope is used here to resolve the lifetime issue.
     // Otherwise, the compiler will think that the objects need to be borrowed for 'static.
@@ -105,9 +117,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let locator_thread = s.spawn(move || {
             // construct the apriltag detector in the locator thread
-            let mut family = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
+            let mut family_tag36h11 = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
+            let mut family_tag25h9 = ApriltagFamilyType::new(ApriltagFamily::Tag25h9);
             let detector = ApriltagDetector::new_multithreading(4)
-                .add_family(&mut family)
+                .add_family(&mut family_tag36h11)
+                .add_family(&mut family_tag25h9) // TODO: Tag25h9 has a higher false detection rate. Maybe consider another option?
                 .quad_sigma(-10.0);
 
             locator_thread_main(

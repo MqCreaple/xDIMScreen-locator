@@ -27,7 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let tagobj_file = Path::new(&env::current_dir()?)
         .join("resources")
         .join("tagobj")
-        .join("handheld-screen-v2.tagobj");
+        .join("fractal-tag.tagobj");
     let tagobj_file_path = tagobj_file.to_str().unwrap().to_string();
     let tagobj_json: serde_json::Value = serde_json::from_reader(File::open(tagobj_file)?)?;
     let id_mapping = hash_map! {
@@ -40,8 +40,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         "UR".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 1),
         "DL".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 2),
         "DR".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 3),
-        "U".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 4),
+        "U".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 4),   // TODO: repeated U
         "D".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 5),
+        "0".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 10),
+        "1".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 0),
+        "2".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 1),
+        "3".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 2),
+        "4".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 3),
+        "5".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 0),
+        "6".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 1),
+        "7".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 2),
+        "8".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 3),
+        "9".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 4),
+        "10".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 5),
+        "11".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 6),
+        "12".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 7),
+        "13".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 8),
+        "14".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 9),
+        "15".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 10),
+        "16".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 11),
     };
     let tagobj = TaggedObject::new_from_json("handheld-screen-v2", &tagobj_json, &id_mapping)?;
     println!(
@@ -82,9 +99,9 @@ impl VisualizeChart {
             .pitch(0.7)
             .yaw(0.7)
             .builder_cb(Box::new(move |area, transform, _d| {
-                let x_axis = -5..=5;
-                let y_axis = -5..=5;
-                let z_axis = -5..=5;
+                let x_axis = 0..=5;
+                let y_axis = 0..=5;
+                let z_axis = 0..=5;
 
                 let mut chart = ChartBuilder::on(&area)
                     .build_cartesian_3d(

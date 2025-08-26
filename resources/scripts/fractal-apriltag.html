@@ -62,7 +62,7 @@
         var counter = {
             "tag16h5": 0,
             "tag25h9": 0,
-            "tag36h11": 0,
+            "tag36h11": 10,
         };
         const CHILD_OFFSET = [
             [1.0, -0.5],
@@ -74,7 +74,7 @@
             if(lvl < 0) {
                 return;
             }
-            if(tagSize <= 15) {
+            if(tagSize <= 10) {
                 family = "tag16h5";
             } else if(tagSize <= 30) {
                 family = "tag25h9";
@@ -123,7 +123,7 @@
         }
 
         function vecLeft90Deg(v) {
-            return [-v[1], v[0]]
+            return [v[1], -v[0]]
         }
 
         async function drawTagPackingFractal(svg, lvl, family, center, size, type, dir) {
@@ -131,7 +131,7 @@
             if(lvl < 0) {
                 return;
             }
-            if(size <= 15) {
+            if(size <= 10) {
                 family = "tag16h5";
             } else if(size <= 30) {
                 family = "tag25h9";
