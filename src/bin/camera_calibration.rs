@@ -17,9 +17,11 @@ To use the camera calibration program, please:
 1. Prepare the camera you want to calibrate and connect it to your computer.
 2. Prepare a calibration board with chessboard pattern. Make sure the board is flat and does not bend, or it might impact the calibration result.
 
-After launching the program, you should see a window on your screen. Then, move the calibration board so that the camera captures all corners on the board, and press ENTER on your keyboard to take a picture. Repeat this procedure as many times as needed.
+After launching the program, you should see a window on your screen. Then, move the calibration board so that the camera captures all corners on the board, and press ENTER or SPACE on your keyboard to take a picture. Repeat this procedure as many times as needed.
 
-When enough pictures are taken, you can press ESC on your keyboard. This should destroy the window and print a message on the command line, which includes the camera's calibrated parameters."#
+When enough pictures are taken, you can press ESC on your keyboard. This should destroy the window and print a message on the command line, which includes the camera's calibrated parameters.
+
+To obtain an accurate calibration result, it is recommended to have at least 20 images, with the green mask covering as much area on the screen as possible."#
 )]
 struct Args {
     /// The device index of the camera to calibrate. Laptop's builtin camera is usually at index 0.
@@ -48,6 +50,22 @@ struct Args {
     /// of length for this field.
     #[arg(short, long)]
     square_size: f32,
+
+    /// When set, fix the tangential distortion coefficients to zero.
+    #[arg(long)]
+    zero_tangent_dist: bool,
+
+    /// When set, fix the K1 distortion coefficient to zero.
+    #[arg(long)]
+    fix_k1: bool,
+
+    /// When set, fix the K2 distortion coefficient to zero.
+    #[arg(long)]
+    fix_k2: bool,
+
+    /// When set, fix the K3 distortion coefficient to zero.
+    #[arg(long)]
+    fix_k3: bool,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -114,13 +132,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // show image and wait for input
-        let masked_frame = (frame + mask.clone() * 0.2).into_result()?;
+        let masked_frame = ((&frame) + (&mask) * 0.2).into_result()?;
         if taken_picture {
             highgui::imshow("calibration", &(masked_frame * 2.0).into_result()?)?; // lighten the image for one frame to simulate shutter effect
         } else {
             highgui::imshow("calibration", &masked_frame)?;
         }
-        taken_picture = false;
         let key = highgui::wait_key(10)?;
         if key == 27 {
             // Esc pressed. Print the calibration result and end the program.
@@ -139,8 +156,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &mut dist_coeff,
                 &mut rvecs,
                 &mut tvecs,
-                0,
-                TermCriteria::default()?,
+                (if args.zero_tangent_dist { calib3d::CALIB_ZERO_TANGENT_DIST } else { 0 })
+                    | (if args.fix_k1 { calib3d::CALIB_FIX_K1 } else { 0 })
+                    | (if args.fix_k2 { calib3d::CALIB_FIX_K2 } else { 0 })
+                    | (if args.fix_k3 { calib3d::CALIB_FIX_K3 } else { 0 }),
+                TermCriteria::new(TermCriteria_EPS | TermCriteria_COUNT, 30, f64::EPSILON)?,
             )?;
             println!("Calibration completed.");
             println!("Camera mat: {:?}", camera_mat);
@@ -161,8 +181,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             );
             break (camera_mat, dist_coeff); // return the camera matrix and distortion coefficients
-        } else if key == 10 || key == 13 {
-            // Enter pressed. Take a picture and store it in the array.
+        } else if (key == 10 || key == 13 || key == 32) && !taken_picture  {
+            // Enter or Space pressed. Take a picture and store it in the array.
             if corners.len() != (args.board_x * args.board_y) as usize {
                 println!(
                     "This image does not contain the correct number of corners. Corners needed: {}x{}={}. Corners detected: {}.",
@@ -202,8 +222,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // add corners to object_points and image_points
             let mut object_corners =
                 Vector::<Point3f>::with_capacity((args.board_x * args.board_y) as usize);
-            for i in 0..args.board_x {
-                for j in 0..args.board_y {
+            for j in 0..args.board_y {
+                for i in 0..args.board_x {
                     object_corners.push(Point3f::new(
                         i as f32 * args.square_size,
                         j as f32 * args.square_size,
@@ -217,10 +237,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "Image captured. Total number of images: {}.",
                 object_points.len()
             );
-
-            // update state variables
-            taken_picture = true;
         }
+        // update variable `taken_picture`
+        taken_picture = key == 10 || key == 13 || key == 32;
     };
     highgui::destroy_all_windows()?;
 

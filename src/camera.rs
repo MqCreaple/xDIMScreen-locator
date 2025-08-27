@@ -40,7 +40,7 @@ impl CameraProperty {
                 return Err("You must specify the FOV on either x or y component!".into());
             }
         };
-        let half_resolution = ((resolution.0 as f64) * 0.5, (resolution.1 as f64) * 0.5);
+        let half_resolution = (((resolution.0 - 1) as f64) * 0.5, ((resolution.1 - 1) as f64) * 0.5);
         let uv_to_image_data = [
             half_resolution.0,
             0.0,
