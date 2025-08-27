@@ -36,6 +36,9 @@ pub fn locator_thread_main<'a>(
     #[cfg(feature = "visualize")]
     let camera_mat = object_locator.camera().camera_mat_na()?;
 
+    #[cfg(feature = "visualize")]
+    highgui::named_window("window", highgui::WINDOW_KEEPRATIO)?;
+
     let mut last_recorded_timestamp = SystemTime::UNIX_EPOCH;
     while !termination_signal.load(Ordering::Relaxed) {
         let mut shared_frame_mat = loop {

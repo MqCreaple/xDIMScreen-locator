@@ -1,6 +1,8 @@
 [package]
 name = "xDIMScreen_locator"
 version = "0.1.0"
+description = "Locate objects with apriltags."
+authors = [ "MqCreaple <gmq14159@gmail.com>" ]
 edition = "2024"
 repository = "https://github.com/MqCreaple/xDIMScreen-locator"
 

@@ -7,6 +7,7 @@ use std::time::SystemTime;
 use std::{collections::HashMap, sync::Arc};
 use std::{env, thread};
 
+use clap::Parser;
 use map_macro::hash_map;
 use opencv::prelude::*;
 use opencv::videoio;
@@ -37,15 +38,50 @@ fn load_object_from_resources(
     Ok(ret)
 }
 
+#[derive(Parser, Debug)]
+#[command(version, about)]
+struct Args {
+    /// The device index of the camera to calibrate. Laptop's builtin camera is usually at index 0.
+    #[arg(short, long, default_value_t = 0)]
+    cam_id: i32,
+
+    /// The camera resolution's X component.
+    #[arg(long, default_value_t = 1920)]
+    cam_res_x: u32,
+
+    /// The camera resolution's Y component.
+    #[arg(long, default_value_t = 1080)]
+    cam_res_y: u32,
+
+    /// The camera's field of view on x direction. Unit: degrees. Not necessary if the camera matrix is provided.
+    #[arg(long)]
+    cam_fov_x: Option<f64>,
+
+    /// The camera's field of view on x direction. Unit: degrees. Not necessary if the camera matrix is provided.
+    #[arg(long)]
+    cam_fov_y: Option<f64>,
+
+    /// Number of threads used by the apriltag detector.
+    #[arg(long, default_value_t = 4)]
+    detector_nthreads: usize,
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Info)
         .try_init()?;
+    let args = Args::parse();
 
     // prepare camera
-    let camera_prop = CameraProperty::new((1680, 945), (None, Some(f64::to_radians(50.0))), None)?;
-    let cam_index = 0;
-    let mut cam = videoio::VideoCapture::new(cam_index, videoio::CAP_ANY)?;
+    let camera_prop = CameraProperty::new(
+        (args.cam_res_x, args.cam_res_y),
+        (
+            args.cam_fov_x.map(f64::to_radians),
+            args.cam_fov_y.map(f64::to_radians),
+        ),
+        None,
+    )?;
+    let mut cam = videoio::VideoCapture::new(args.cam_id, videoio::CAP_ANY)?;
     cam.set(
         videoio::CAP_PROP_FRAME_WIDTH,
         camera_prop.resolution.0 as f64,
@@ -85,10 +121,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         "fractal tag",
         hash_map! {
             "0".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 10),
-            "1".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 0),
-            "2".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 1),
-            "3".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 2),
-            "4".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 3),
+            "1".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 11),
+            "2".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 15),
+            "3".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 19),
+            "4".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 23),
+            "5".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 12),
+            "6".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 13),
+            "7".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 14),
+            "8".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 16),
+            "9".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 17),
+            "10".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 18),
+            "11".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 20),
+            "12".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 21),
+            "13".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 22),
+            "14".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 24),
+            "15".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 25),
+            "16".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 26),
         },
     )?;
     locator.add(&fractal_tag)?;
@@ -118,10 +166,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         let locator_thread = s.spawn(move || {
             // construct the apriltag detector in the locator thread
             let mut family_tag36h11 = ApriltagFamilyType::new(ApriltagFamily::Tag36h11);
-            let mut family_tag25h9 = ApriltagFamilyType::new(ApriltagFamily::Tag25h9);
-            let detector = ApriltagDetector::new_multithreading(4)
+            let detector = ApriltagDetector::new_multithreading(args.detector_nthreads)
                 .add_family(&mut family_tag36h11)
-                .add_family(&mut family_tag25h9) // TODO: Tag25h9 has a higher false detection rate. Maybe consider another option?
                 .quad_sigma(-10.0);
 
             locator_thread_main(

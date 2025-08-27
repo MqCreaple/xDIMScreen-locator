@@ -74,11 +74,11 @@
             if(lvl < 0) {
                 return;
             }
-            if(tagSize <= 10) {
-                family = "tag16h5";
-            } else if(tagSize <= 30) {
-                family = "tag25h9";
-            }
+            // if(tagSize <= 10) {
+            //     family = "tag16h5";
+            // } else if(tagSize <= 30) {
+            //     family = "tag25h9";
+            // }
             // curStat: -1 = the biggest tag, 0 = upright, 1 = upleft, 2 = bottomleft, 3 = bottomright
             let id_str = counter[family].toString();
             counter[family] += 1;
@@ -131,11 +131,11 @@
             if(lvl < 0) {
                 return;
             }
-            if(size <= 10) {
-                family = "tag16h5";
-            } else if(size <= 30) {
-                family = "tag25h9";
-            }
+            // if(size <= 10) {
+            //     family = "tag16h5";
+            // } else if(size <= 30) {
+            //     family = "tag25h9";
+            // }
             let halfSize = size / 2;
             let id_str = counter[family].toString();
             counter[family] += 1;

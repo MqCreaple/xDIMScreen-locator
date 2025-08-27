@@ -8,7 +8,7 @@ use opencv::{
 #[derive(Parser, Debug)]
 #[command(
     name = "xDIMScreen camera calibration program",
-    version = "0.1.0",
+    version,
     about = "Calibrate your camera.",
     long_about = r#"This program is for calibrating your camera.
 
@@ -34,11 +34,11 @@ struct Args {
     #[arg(long, default_value_t = 1080)]
     res_y: u32,
 
-    /// The chessboard pattern's width (number of points on X direction).
+    /// The chessboard corners's width (number of points on X direction). This is NOT the number of grids.
     #[arg(long)]
     board_x: i32,
 
-    /// The chessboard pattern's height (number of points on Y direction).
+    /// The chessboard corners's height (number of points on Y direction). This is NOT the number of grids.
     #[arg(long)]
     board_y: i32,
 
@@ -53,7 +53,7 @@ struct Args {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    highgui::named_window("calibration", highgui::WINDOW_AUTOSIZE)?;
+    highgui::named_window("calibration", highgui::WINDOW_KEEPRATIO)?;
     let mut cam = videoio::VideoCapture::new(args.cam_id, videoio::CAP_ANY)?; // 0 is the default camera
     cam.set(videoio::CAP_PROP_FRAME_WIDTH, args.res_x as f64)?;
     cam.set(videoio::CAP_PROP_FRAME_HEIGHT, args.res_y as f64)?;
@@ -160,15 +160,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "VERY BAD"
                 }
             );
-            break (camera_mat, dist_coeff);   // return the camera matrix and distortion coefficients
+            break (camera_mat, dist_coeff); // return the camera matrix and distortion coefficients
         } else if key == 10 || key == 13 {
             // Enter pressed. Take a picture and store it in the array.
             if corners.len() != (args.board_x * args.board_y) as usize {
                 println!(
-                    "This image does not contain the correct number of corners. Corners needed: {}x{}={}.",
+                    "This image does not contain the correct number of corners. Corners needed: {}x{}={}. Corners detected: {}.",
                     args.board_x,
                     args.board_y,
-                    args.board_x * args.board_y
+                    args.board_x * args.board_y,
+                    corners.len(),
                 );
                 continue;
             }
@@ -247,7 +248,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut map_y,
     )?;
 
-    highgui::named_window("undistorted image", highgui::WINDOW_AUTOSIZE)?;
+    highgui::named_window("undistorted image", highgui::WINDOW_KEEPRATIO)?;
     loop {
         let mut frame = Mat::default();
         cam.read(&mut frame)?;

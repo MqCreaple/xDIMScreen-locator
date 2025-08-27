@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::ops::{Range, RangeInclusive};
@@ -7,10 +8,10 @@ use std::{env, thread};
 
 use egui::{CentralPanel, Visuals};
 use egui_plotter::{Chart, MouseConfig};
-use map_macro::hash_map;
 
 extern crate nalgebra as na;
 
+use clap::Parser;
 use plotters::chart::ChartBuilder;
 use plotters::prelude::*;
 use plotters::series::LineSeries;
@@ -18,49 +19,44 @@ use xDIMScreen_locator::tag::apriltag::*;
 use xDIMScreen_locator::tag::locator::TAG_CORNERS;
 use xDIMScreen_locator::tag::tagged_object::{TagIndex, TaggedObject};
 
+#[derive(Parser, Debug)]
+#[command(
+    name = "xDIMScreen tagged object visualizer",
+    version,
+    about = "Visualize tagged object from TagObj files."
+)]
+struct Args {
+    /// Name of the TagObj file to load from. The suffix ".tagobj" is optional.
+    #[arg(default_value_t = String::from("simple-tag"))]
+    name: String,
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Info)
         .try_init()?;
+    let mut args = Args::parse();
+    if !args.name.ends_with(".tagobj") {
+        args.name += ".tagobj";
+    }
 
     // load tagged object
     let tagobj_file = Path::new(&env::current_dir()?)
         .join("resources")
         .join("tagobj")
-        .join("fractal-tag.tagobj");
+        .join(args.name.clone());
     let tagobj_file_path = tagobj_file.to_str().unwrap().to_string();
     let tagobj_json: serde_json::Value = serde_json::from_reader(File::open(tagobj_file)?)?;
-    let id_mapping = hash_map! {
-        "U".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 120),
-        "R".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 121),
-        "B".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 122),
-        "L".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 123),
-        "F".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 124),
-        "UL".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 0),
-        "UR".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 1),
-        "DL".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 2),
-        "DR".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 3),
-        "U".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 4),   // TODO: repeated U
-        "D".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 5),
-        "0".to_string() => TagIndex::new(ApriltagFamily::Tag36h11, 10),
-        "1".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 0),
-        "2".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 1),
-        "3".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 2),
-        "4".to_string() => TagIndex::new(ApriltagFamily::Tag25h9, 3),
-        "5".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 0),
-        "6".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 1),
-        "7".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 2),
-        "8".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 3),
-        "9".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 4),
-        "10".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 5),
-        "11".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 6),
-        "12".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 7),
-        "13".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 8),
-        "14".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 9),
-        "15".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 10),
-        "16".to_string() => TagIndex::new(ApriltagFamily::Tag16h5, 11),
-    };
-    let tagobj = TaggedObject::new_from_json("handheld-screen-v2", &tagobj_json, &id_mapping)?;
+    let mut id_mapping = HashMap::new();
+    let mut next_tag_index = 0;
+    for tag_id in tagobj_json.get("tags").unwrap().as_object().unwrap().keys() {
+        id_mapping.insert(
+            tag_id.clone(),
+            TagIndex::new(ApriltagFamily::Tag36h11, next_tag_index),
+        );
+        next_tag_index += 1;
+    }
+    let tagobj = TaggedObject::new_from_json(args.name, &tagobj_json, &id_mapping)?;
     println!(
         "Successfully loaded tagged object from path {}",
         tagobj_file_path
