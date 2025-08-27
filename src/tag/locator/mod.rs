@@ -109,10 +109,87 @@ impl<'a> TaggedObjectLocator<'a> {
             .collect()
     }
 
+    /// Locate a single tag with OpenCV's SOLVEPNP_IPPE_SQUARE method.
+    ///
+    /// # Arguments
+    /// * `detection` is the detection of the tag to locate.
+    /// * `scale` is the scaling factor to multiply on the TAG_CORNERS array. This equals half of the tag's
+    /// side length.
+    ///
+    /// # Returns
+    /// The function returns the transformation of the tag from the camera's center.
+    fn locate_tag(
+        &self,
+        detection: &apriltag::ApriltagDetection,
+        scale: f64,
+    ) -> Result<na::Isometry3<f64>, Box<dyn std::error::Error>> {
+        let mut object_points_data = [0.0f64; 12]; // `detections.len()` (tags) * `4` (vertices / tag) * `3` (coordinates / vertex)
+        let mut image_points_data = [0.0f64; 8];
+        for (i, corner) in detection.corners().iter().enumerate() {
+            object_points_data[i * 3] = TAG_CORNERS[i].x * scale;
+            object_points_data[i * 3 + 1] = TAG_CORNERS[i].y * scale;
+            object_points_data[i * 3 + 2] = TAG_CORNERS[i].z * scale;
+            image_points_data[i * 2] = corner.x;
+            image_points_data[i * 2 + 1] = corner.y;
+        }
+        let object_points = Mat::new_rows_cols_with_data(4, 3, &object_points_data)?;
+        let image_points = Mat::new_rows_cols_with_data(4, 2, &image_points_data)?;
+        let mut rvec = Mat::default();
+        let mut tvec = Mat::default();
+
+        calib3d::solve_pnp(
+            &object_points,
+            &image_points,
+            &self.camera.camera_mat,
+            &self.camera.distortion,
+            &mut rvec,
+            &mut tvec,
+            false,
+            calib3d::SOLVEPNP_IPPE_SQUARE,
+        )?;
+
+        let rvec = unsafe {
+            na::Vector3::new(
+                *rvec.at_unchecked::<f64>(0)?,
+                *rvec.at_unchecked::<f64>(1)?,
+                *rvec.at_unchecked::<f64>(2)?,
+            )
+        };
+        let tvec = unsafe {
+            na::Vector3::new(
+                *tvec.at_unchecked::<f64>(0)?,
+                *tvec.at_unchecked::<f64>(1)?,
+                *tvec.at_unchecked::<f64>(2)?,
+            )
+        };
+        Ok(na::Isometry3::new(tvec, rvec))
+    }
+
+    /// Locate a single object based on the detected tag locations.
+    ///
+    /// # Arguments
+    /// * `detections` array stores a list of pairs of apriltag detections with their relative transformation
+    /// from the object's center. This is created by filtering out the tags belonging to the object of interest
+    /// from all tag detections in one frame.
+    ///
+    /// # Returns
+    /// The function returns the transformation of the object's center in the camera's frame, or throw an error.
     fn locate_single_object<'b, 'c>(
         &self,
         detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)],
     ) -> Result<na::Isometry3<f64>, Box<dyn std::error::Error>> {
+        if detections.len() == 1 {
+            // Only one tag is present. Use `locate_tag` function to achieve better performance.
+            let (detection, tag_to_object) = &detections[0];
+            let tag_to_cam = self.locate_tag(detection, tag_to_object.0.scaling())?;
+            let tag_to_object_iso = na::Isometry3::new(
+                tag_to_object.0.isometry.translation.vector,
+                tag_to_object.0.isometry.rotation.scaled_axis(),
+            );
+            return Ok(tag_to_cam * tag_to_object_iso.inverse());
+        }
+
+        // More than 1 tag is present. Use `solve_pnp` in OpenCV.
         let mut object_points_data = Vec::<f64>::with_capacity(detections.len() * 12); // `detections.len()` (tags) * `4` (vertices / tag) * `3` (coordinates / vertex)
         let mut image_points_data = Vec::<f64>::with_capacity(detections.len() * 8);
         for (detection, tag_location) in detections {
@@ -142,16 +219,20 @@ impl<'a> TaggedObjectLocator<'a> {
             calib3d::SOLVEPNP_ITERATIVE,
         )?;
 
-        let rvec = na::Vector3::new(
-            *rvec.at::<f64>(0)?, // TODO: change this to `at_unchecked` when stablizes.
-            *rvec.at::<f64>(1)?,
-            *rvec.at::<f64>(2)?,
-        );
-        let tvec = na::Vector3::new(
-            *tvec.at::<f64>(0)?, // TODO: change this to `at_unchecked` when stablizes.
-            *tvec.at::<f64>(1)?,
-            *tvec.at::<f64>(2)?,
-        );
+        let rvec = unsafe {
+            na::Vector3::new(
+                *rvec.at_unchecked::<f64>(0)?,
+                *rvec.at_unchecked::<f64>(1)?,
+                *rvec.at_unchecked::<f64>(2)?,
+            )
+        };
+        let tvec = unsafe {
+            na::Vector3::new(
+                *tvec.at_unchecked::<f64>(0)?,
+                *tvec.at_unchecked::<f64>(1)?,
+                *tvec.at_unchecked::<f64>(2)?,
+            )
+        };
         Ok(na::Isometry3::new(tvec, rvec))
     }
 

@@ -181,7 +181,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             );
             break (camera_mat, dist_coeff); // return the camera matrix and distortion coefficients
-        } else if (key == 10 || key == 13 || key == 32) && !taken_picture  {
+        } else if (key == 10 || key == 13 || key == 32) && !taken_picture {
             // Enter or Space pressed. Take a picture and store it in the array.
             if corners.len() != (args.board_x * args.board_y) as usize {
                 println!(
