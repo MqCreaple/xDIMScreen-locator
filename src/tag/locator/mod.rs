@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use opencv::calib3d;
 use opencv::prelude::*;
@@ -12,6 +12,9 @@ use crate::tag::apriltag;
 use crate::tag::error::ConflictingTagError;
 use crate::tag::tagged_object::{TagIndex, TagLocation, TaggedObject};
 
+/// A square tag's four corners in its local reference frame.
+///
+/// This array's order is kept consistent with Apriltag and OpenCV library.
 pub const TAG_CORNERS: [na::Point3<f64>; 5] = [
     na::Point3::new(-1.0, 1.0, 0.0),
     na::Point3::new(1.0, 1.0, 0.0),
@@ -19,6 +22,9 @@ pub const TAG_CORNERS: [na::Point3<f64>; 5] = [
     na::Point3::new(-1.0, -1.0, 0.0),
     na::Point3::new(-1.0, 1.0, 0.0), // add the first point again to make drawing the tag easier
 ];
+
+/// The duration after which an object's stored information is forgotten.
+pub const OBJECT_FORGET_DURATION: Duration = Duration::from_secs(1);
 
 pub struct TaggedObjectLocator<'a> {
     /// Camera matrix
@@ -29,6 +35,11 @@ pub struct TaggedObjectLocator<'a> {
 
     /// Mapping from each tag's property to its corresponding object's index in the registry array
     tag_map: HashMap<TagIndex, (usize, TagLocation)>,
+
+    /// Each object's last location. These are used as the extrinsic guess for OpenCV's solvePnP function.
+    ///
+    /// This array's index corresponds to the objects stored in `registry`.
+    last_location: Vec<Option<(Mat, Mat, SystemTime)>>,
 }
 
 /// A data struct for storing the located objects in each frame.
@@ -65,6 +76,7 @@ impl<'a> TaggedObjectLocator<'a> {
             camera,
             registry: Vec::new(),
             tag_map: HashMap::new(),
+            last_location: Vec::new(),
         }
     }
 
@@ -91,6 +103,7 @@ impl<'a> TaggedObjectLocator<'a> {
             self.tag_map
                 .insert(*tag_index, (this_registry_index, tag_location.clone()));
         }
+        self.last_location.push(None);
         Ok(())
     }
 
@@ -112,9 +125,9 @@ impl<'a> TaggedObjectLocator<'a> {
     /// Locate a single tag with OpenCV's SOLVEPNP_IPPE_SQUARE method.
     ///
     /// # Arguments
-    /// * `detection` is the detection of the tag to locate.
-    /// * `scale` is the scaling factor to multiply on the TAG_CORNERS array. This equals half of the tag's
-    /// side length.
+    /// * `detection` - The detection of the tag to locate.
+    /// * `scale` - The scaling factor to multiply on the TAG_CORNERS array. This equals half of the tag's
+    ///             side length.
     ///
     /// # Returns
     /// The function returns the transformation of the tag from the camera's center.
@@ -168,16 +181,37 @@ impl<'a> TaggedObjectLocator<'a> {
     /// Locate a single object based on the detected tag locations.
     ///
     /// # Arguments
-    /// * `detections` array stores a list of pairs of apriltag detections with their relative transformation
-    /// from the object's center. This is created by filtering out the tags belonging to the object of interest
-    /// from all tag detections in one frame.
+    /// * `detections` - Stores a list of pairs of apriltag detections with their relative transformation
+    ///                  from the object's center. This is created by filtering out the tags belonging to
+    ///                  the object of interest from all tag detections in one frame.
+    /// * `object_index` - The object's index in the `registry` array. If `object_id` is `None`, then the
+    ///                    returned rotation and translation vectors won't be stored.
+    /// * `timestamp` - The timestamp when the object location occurs.
     ///
     /// # Returns
-    /// The function returns the transformation of the object's center in the camera's frame, or throw an error.
+    /// The function returns the transformation of the object's center in the camera's frame, or throw an
+    /// error.
     fn locate_single_object<'b, 'c>(
-        &self,
+        &mut self,
         detections: &'b [(&'c apriltag::ApriltagDetection, TagLocation)],
+        object_index: Option<usize>,
+        timestamp: SystemTime,
     ) -> Result<na::Isometry3<f64>, Box<dyn std::error::Error>> {
+        let mut rvec = Mat::default();
+        let mut tvec = Mat::default();
+        // load the object's last location
+        let mut use_extrinsic_guess = false;
+        if let Some(object_index) = object_index
+            && let Some(last_location) = &self.last_location[object_index]
+        {
+            if timestamp.duration_since(last_location.2)? <= OBJECT_FORGET_DURATION {
+                // The object is not forgotten. Load `rvec` and `tvec` from `last_location`.
+                rvec = last_location.0.clone();
+                tvec = last_location.1.clone();
+                use_extrinsic_guess = true;
+            }
+        }
+
         if detections.len() == 1 {
             // Only one tag is present. Use `locate_tag` function to achieve better performance.
             let (detection, tag_to_object) = &detections[0];
@@ -205,8 +239,6 @@ impl<'a> TaggedObjectLocator<'a> {
         let points_cnt = (detections.len() * 4) as i32;
         let object_points = Mat::new_rows_cols_with_data(points_cnt, 3, &object_points_data)?;
         let image_points = Mat::new_rows_cols_with_data(points_cnt, 2, &image_points_data)?;
-        let mut rvec = Mat::default();
-        let mut tvec = Mat::default();
 
         calib3d::solve_pnp(
             &object_points,
@@ -215,25 +247,31 @@ impl<'a> TaggedObjectLocator<'a> {
             &self.camera.distortion,
             &mut rvec,
             &mut tvec,
-            false,
+            use_extrinsic_guess,
             calib3d::SOLVEPNP_ITERATIVE,
         )?;
 
-        let rvec = unsafe {
+        let rvec_na = unsafe {
             na::Vector3::new(
                 *rvec.at_unchecked::<f64>(0)?,
                 *rvec.at_unchecked::<f64>(1)?,
                 *rvec.at_unchecked::<f64>(2)?,
             )
         };
-        let tvec = unsafe {
+        let tvec_na = unsafe {
             na::Vector3::new(
                 *tvec.at_unchecked::<f64>(0)?,
                 *tvec.at_unchecked::<f64>(1)?,
                 *tvec.at_unchecked::<f64>(2)?,
             )
         };
-        Ok(na::Isometry3::new(tvec, rvec))
+
+        if let Some(object_index) = object_index {
+            // write the rvec and tvec to the object's last location
+            self.last_location[object_index] = Some((rvec, tvec, timestamp));
+        }
+
+        Ok(na::Isometry3::new(tvec_na, rvec_na))
     }
 
     /// Locate every object registered in this tagged object locator, then store the results in a
@@ -265,9 +303,10 @@ impl<'a> TaggedObjectLocator<'a> {
         locked_result.name_map.clear();
         for (registry_index, detections) in tag_classification {
             let name = self.registry[registry_index].name.as_str();
-            locked_result
-                .name_map
-                .insert(name, self.locate_single_object(&detections)?);
+            locked_result.name_map.insert(
+                name,
+                self.locate_single_object(&detections, Some(registry_index), timestamp)?,
+            );
         }
         drop(locked_result);
         // signal all other threads waiting on this conditional variable
