@@ -251,6 +251,8 @@ impl<'a> TaggedObjectLocator<'a> {
             calib3d::SOLVEPNP_ITERATIVE,
         )?;
 
+        // TODO: invert xyz and rotation here, since solvePnP always returns location on the +z plane.
+
         let rvec_na = unsafe {
             na::Vector3::new(
                 *rvec.at_unchecked::<f64>(0)?,

@@ -1,3 +1,5 @@
+#![cfg_attr(any(), rustfmt::skip)]
+
 use clap::Parser;
 use opencv::core::*;
 use opencv::{
