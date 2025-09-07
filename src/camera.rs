@@ -23,9 +23,11 @@ pub struct CameraProperty {
 
 impl CameraProperty {
     fn get_uncalibrated_camera_mat(
-        resolution: (u32, u32),
+        mut resolution: (u32, u32),
         fov: (Option<f64>, Option<f64>),
     ) -> Result<Mat, Box<dyn std::error::Error>> {
+        resolution.0 -= 1;
+        resolution.1 -= 1;
         let (x_scaling, y_scaling) = match fov {
             (Some(fov_x), Some(fov_y)) => (f64::tan(fov_x * 0.5), f64::tan(fov_y * 0.5)),
             (Some(fov_x), None) => {
@@ -41,8 +43,8 @@ impl CameraProperty {
             }
         };
         let half_resolution = (
-            ((resolution.0 - 1) as f64) * 0.5,
-            ((resolution.1 - 1) as f64) * 0.5,
+            (resolution.0 as f64) * 0.5,
+            (resolution.1 as f64) * 0.5,
         );
         let uv_to_image_data = [
             half_resolution.0,
