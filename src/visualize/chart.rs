@@ -4,8 +4,10 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 use std::{f64, thread};
 
-use egui::{CentralPanel, Visuals};
-use egui_plotter::{Chart, MouseConfig};
+use egui::{CentralPanel, SidePanel, Visuals};
+use egui_plotter::{Chart, EguiBackend, MouseConfig};
+use plotters::coord::ranged3d::Cartesian3d;
+use plotters::coord::types::RangedCoordf64;
 use plotters::element::PointCollection;
 use plotters::prelude::*;
 use statrs::distribution::{self, ContinuousCDF};
@@ -21,7 +23,8 @@ use crate::visualize::utils::generate_random_color;
 ///
 /// The `'a` lifetime marker indicates the lifetime of located objects to be visualized.
 pub struct VisualizeChart<'a> {
-    chart: Chart<Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>>,
+    main_chart: Chart<Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>>,
+    axis_angle_chart: Chart<Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>>,
     fps: f64,
 }
 
@@ -39,7 +42,15 @@ impl<'a> VisualizeChart<'a> {
     ) -> Self {
         let context = &cc.egui_ctx;
         context.set_visuals(Visuals::light()); // Set to light theme
-        let chart = Chart::new(located_objects.clone())
+
+        let std_normal_distr = distribution::Normal::standard();
+        const CONFIDENCE_LEVEL: f64 = 0.95;
+        let cbrt_confidence_lvl = CONFIDENCE_LEVEL.cbrt();
+        let ellipsoid_scale = std_normal_distr.inverse_cdf(cbrt_confidence_lvl); // these are for plotting the ellipsoid
+
+        let camera_clone = camera.clone();
+        let object_map_clone = object_map.clone();
+        let main_chart = Chart::new(located_objects.clone())
             .mouse(MouseConfig::enabled())
             .pitch(0.7)
             .yaw(0.7)
@@ -47,7 +58,6 @@ impl<'a> VisualizeChart<'a> {
                 let x_axis = -5..=5;
                 let y_axis = -5..=5;
                 let z_axis = -5..=5;
-
                 let mut chart = ChartBuilder::on(&area)
                     .build_cartesian_3d(
                         to_f64_range(&x_axis),
@@ -55,39 +65,19 @@ impl<'a> VisualizeChart<'a> {
                         to_f64_range(&z_axis),
                     )
                     .unwrap();
-
                 chart.with_projection(|mut pb| {
                     pb.yaw = transform.yaw;
                     pb.pitch = transform.pitch;
                     pb.scale = transform.zoom;
                     pb.into_matrix()
                 });
-
-                chart
-                    .draw_series(LineSeries::new(x_axis.map(|x| (x.as_f64(), 0., 0.)), &RED))
-                    .unwrap()
-                    .label("x axis");
-                chart
-                    .draw_series(LineSeries::new(
-                        y_axis.map(|y| (0., y.as_f64(), 0.)),
-                        &GREEN,
-                    ))
-                    .unwrap()
-                    .label("y axis");
-                chart
-                    .draw_series(LineSeries::new(z_axis.map(|z| (0., 0., z.as_f64())), &BLUE))
-                    .unwrap()
-                    .label("z axis");
+                Self::plot_axes(&mut chart, x_axis, y_axis, z_axis);
 
                 // plot all located objects
-                let std_normal_distr = distribution::Normal::standard();
-                const CONFIDENCE_LEVEL: f64 = 0.95;
-                let cbrt_confidence_lvl = CONFIDENCE_LEVEL.cbrt();
-                let ellipsoid_scale = std_normal_distr.inverse_cdf(cbrt_confidence_lvl); // these are for plotting the ellipsoid
 
                 let located_objects_lock = data.0.lock().unwrap();
                 for (name, loc) in located_objects_lock.name_map() {
-                    if let Some(object) = object_map.get(*name) {
+                    if let Some(object) = object_map_clone.get(*name) {
                         // Get the color of the located object
                         let color = generate_random_color(name);
                         // plot all tags
@@ -105,16 +95,17 @@ impl<'a> VisualizeChart<'a> {
                         }
                         // plot an ellipsoid representing the confidence regions of the located objects
                         let cov_mat = TaggedObjectLocator::calculate_covariance(
-                            camera.camera_mat_na().unwrap(),
+                            camera_clone.camera_mat_na().unwrap(),
                             object.iter().map(|(_, b)| b.clone()),
                             *loc,
                             (2.0, 2.0), // variance of 2 pixel
                         )
                         .unwrap();
+                        let cov_mat = cov_mat.try_inverse().unwrap();
                         Self::plot_ellipsoid(
                             &mut chart,
                             loc.translation.vector,
-                            cov_mat.try_inverse().unwrap(),
+                            cov_mat.fixed_view::<3, 3>(0, 0).clone_owned(),
                             ellipsoid_scale,
                             64,
                             &BLACK,
@@ -124,7 +115,82 @@ impl<'a> VisualizeChart<'a> {
                 }
             }));
 
-        Self { chart, fps }
+        let axis_angle_chart = Chart::new(located_objects.clone())
+            .mouse(MouseConfig::enabled())
+            .pitch(0.7)
+            .yaw(0.7)
+            .builder_cb(Box::new(move |area, transform, data| {
+                let x_axis = -3..=3;
+                let y_axis = -3..=3;
+                let z_axis = -3..=3;
+                let mut chart = ChartBuilder::on(&area)
+                    .build_cartesian_3d(
+                        to_f64_range(&x_axis),
+                        to_f64_range(&y_axis),
+                        to_f64_range(&z_axis),
+                    )
+                    .unwrap();
+                chart.with_projection(|mut pb| {
+                    pb.yaw = transform.yaw;
+                    pb.pitch = transform.pitch;
+                    pb.scale = transform.zoom;
+                    pb.into_matrix()
+                });
+                Self::plot_axes(&mut chart, x_axis, y_axis, z_axis);
+
+                // plot the axis angle of all objects
+                let located_objects_lock = data.0.lock().unwrap();
+                for (name, loc) in located_objects_lock.name_map() {
+                    if let Some(object) = object_map.get(*name) {
+                        let color = generate_random_color(name);
+                        let axis_angle = loc.rotation.scaled_axis();
+                        chart.draw_series(LineSeries::new([(0.0, 0.0, 0.0), (axis_angle.x, axis_angle.y, axis_angle.z)], &color)).unwrap();
+                        // draw an ellipsoid to represent the covariance
+                        let cov_mat = TaggedObjectLocator::calculate_covariance(
+                            camera.camera_mat_na().unwrap(),
+                            object.iter().map(|(_, b)| b.clone()),
+                            *loc,
+                            (2.0, 2.0), // variance of 2 pixel
+                        )
+                        .unwrap();
+                        let cov_mat = cov_mat.try_inverse().unwrap();
+                        Self::plot_ellipsoid(
+                            &mut chart,
+                            axis_angle,
+                            cov_mat.fixed_view::<3, 3>(0, 0).clone_owned(),
+                            ellipsoid_scale,
+                            64,
+                            &color,
+                        )
+                        .unwrap();
+                    }
+                }
+            }));
+        Self { main_chart, axis_angle_chart, fps }
+    }
+
+    fn plot_axes(
+        chart: &mut ChartContext<'_, EguiBackend<'_>, Cartesian3d<RangedCoordf64, RangedCoordf64, RangedCoordf64>>,
+        x_axis: RangeInclusive<i32>,
+        y_axis: RangeInclusive<i32>,
+        z_axis: RangeInclusive<i32>,
+    ) {
+
+        chart
+            .draw_series(LineSeries::new(x_axis.map(|x| (x.as_f64(), 0., 0.)), &RED))
+            .unwrap()
+            .label("x axis");
+        chart
+            .draw_series(LineSeries::new(
+                y_axis.map(|y| (0., y.as_f64(), 0.)),
+                &GREEN,
+            ))
+            .unwrap()
+            .label("y axis");
+        chart
+            .draw_series(LineSeries::new(z_axis.map(|z| (0., 0., z.as_f64())), &BLUE))
+            .unwrap()
+            .label("z axis");
     }
 
     /// Draw an ellipsoid centered at `center` with `mat` describing its shape.
@@ -185,7 +251,12 @@ impl<'a> VisualizeChart<'a> {
 impl<'a> eframe::App for VisualizeChart<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         CentralPanel::default().show(ctx, |ui| {
-            self.chart.draw(ui);
+            self.main_chart.draw(ui);
+        });
+        SidePanel::right("axis_angle_panel")
+        .resizable(true)
+        .show(ctx, |ui| {
+            self.axis_angle_chart.draw(ui);
         });
 
         thread::sleep(Duration::from_secs_f64(1.0 / self.fps));

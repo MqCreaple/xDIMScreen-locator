@@ -10,6 +10,18 @@ use crate::tag::apriltag::{
 
 use super::*;
 
+fn project_tag(ret: &mut na::DVector<f64>, object_location: &na::Isometry3<f64>, object: &TaggedObject, camera_mat: &na::Matrix3<f64>) {
+    for (j, (_, tag_location)) in object.tags.iter().enumerate() {
+        for k in 0..4 {
+            let point = camera_mat
+                * object_location
+                    .transform_point(&tag_location.0.transform_point(&TAG_CORNERS[k]));
+            ret[j * 8 + k * 2] = point.x / point.z;
+            ret[j * 8 + k * 2 + 1] = point.y / point.z;
+        }
+    }
+}
+
 #[test]
 fn test_projection_jacobian() {
     let camera =
@@ -50,7 +62,7 @@ fn test_projection_jacobian() {
                 rng.random_range(-3.0..3.0),
                 rng.random_range(-3.0..3.0),
                 rng.random_range(4.0..12.0)
-            ], // TODO: use random numbers
+            ],
             na::vector![0.0, 0.05, 0.02],
         );
         let mut detections = Vec::with_capacity(object.tags.len());
@@ -97,42 +109,47 @@ fn test_projection_jacobian() {
 
         // measure the projection jacobian with numerical differentiation
         let mut measured_projection_jacobian =
-            na::MatrixXx3::zeros(calculated_projection_jacobian.nrows());
-        let dx = 1e-4;
+            na::MatrixXx6::zeros(calculated_projection_jacobian.nrows());
+        const EPS: f64 = 1e-4;
         for (i, shift) in [
-            na::vector![dx, 0.0, 0.0],
-            na::vector![0.0, dx, 0.0],
-            na::vector![0.0, 0.0, dx],
+            na::vector![EPS, 0.0, 0.0],
+            na::vector![0.0, EPS, 0.0],
+            na::vector![0.0, 0.0, EPS],
         ]
         .into_iter()
         .enumerate()
         {
+            // measure translations
             let mut object_location_1 = object_location.clone();
             object_location_1.append_translation_mut(&na::Translation3::from(-shift));
             let mut vec1 = na::DVector::zeros(calculated_projection_jacobian.nrows());
-            for (j, (_, tag_location)) in object.tags.iter().enumerate() {
-                for k in 0..4 {
-                    let point = camera_mat
-                        * object_location_1
-                            .transform_point(&tag_location.0.transform_point(&TAG_CORNERS[k]));
-                    vec1[j * 8 + k * 2] = point.x / point.z;
-                    vec1[j * 8 + k * 2 + 1] = point.y / point.z;
-                }
-            }
+            project_tag(&mut vec1, &object_location_1, &object, &camera_mat);
             let mut object_location_2 = object_location.clone();
             object_location_2.append_translation_mut(&na::Translation3::from(shift));
             let mut vec2 = na::DVector::zeros(calculated_projection_jacobian.nrows());
-            for (j, (_, tag_location)) in object.tags.iter().enumerate() {
-                for k in 0..4 {
-                    let point = camera_mat
-                        * object_location_2
-                            .transform_point(&tag_location.0.transform_point(&TAG_CORNERS[k]));
-                    vec2[j * 8 + k * 2] = point.x / point.z;
-                    vec2[j * 8 + k * 2 + 1] = point.y / point.z;
-                }
-            }
-            let diff = (vec2 - vec1) / (2.0 * dx);
+            project_tag(&mut vec2, &object_location_2, &object, &camera_mat);
+            let diff = (vec2 - vec1) / (2.0 * EPS);
             measured_projection_jacobian.set_column(i, &diff);
+        }
+        for (i, rotate) in [
+            na::vector![EPS, 0.0, 0.0],
+            na::vector![0.0, EPS, 0.0],
+            na::vector![0.0, 0.0, EPS],
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            // measure rotations
+            let mut object_location_1 = object_location.clone();
+            object_location_1.rotation = na::UnitQuaternion::from_scaled_axis(object_location_1.rotation.scaled_axis() - rotate);
+            let mut vec1 = na::DVector::zeros(calculated_projection_jacobian.nrows());
+            project_tag(&mut vec1, &object_location_1, &object, &camera_mat);
+            let mut object_location_2 = object_location.clone();
+            object_location_2.rotation = na::UnitQuaternion::from_scaled_axis(object_location_2.rotation.scaled_axis() + rotate);
+            let mut vec2 = na::DVector::zeros(calculated_projection_jacobian.nrows());
+            project_tag(&mut vec2, &object_location_2, &object, &camera_mat);
+            let diff = (vec2 - vec1) / (2.0 * EPS);
+            measured_projection_jacobian.set_column(i + 3, &diff);
         }
 
         for i in 0..calculated_projection_jacobian.nrows() {

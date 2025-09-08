@@ -11,6 +11,7 @@ use crate::camera::CameraProperty;
 use crate::tag::apriltag;
 use crate::tag::error::ConflictingTagError;
 use crate::tag::tagged_object::{TagIndex, TagLocation, TaggedObject};
+use crate::utils::rotation_jacobian;
 
 /// A square tag's four corners in its local reference frame.
 ///
@@ -340,25 +341,29 @@ impl<'a> TaggedObjectLocator<'a> {
         camera_mat: na::Matrix3<f64>,
         detections: D,
         location: na::Isometry3<f64>,
-    ) -> Result<na::MatrixXx3<f64>, Box<dyn std::error::Error>> {
+    ) -> Result<na::MatrixXx6<f64>, Box<dyn std::error::Error>> {
         let n = detections.clone().count();
-        let mut d_mat = na::MatrixXx3::<f64>::zeros(8 * n);
+        let mut ans = na::MatrixXx6::<f64>::zeros(8 * n);
         for (i, tag_loc) in detections.enumerate() {
-            for j in 0..4 {
+            let rotation = tag_loc.0.isometry.rotation;
+            for (j, corner) in TAG_CORNERS.iter().take(4).enumerate() {
                 let index = i * 4 + j;
                 let u_index = index * 2;
-                let v_index = index * 2 + 1;
-                let local_position = tag_loc.0.transform_point(&TAG_CORNERS[j]);
+                let local_position = tag_loc.0.transform_point(&corner);
                 let a = camera_mat * location.transform_point(&local_position);
-                unsafe {
-                    *d_mat.get_unchecked_mut((u_index, 0)) = 1.0 / a.z;
-                    *d_mat.get_unchecked_mut((u_index, 2)) = -a.x / (a.z * a.z);
-                    *d_mat.get_unchecked_mut((v_index, 1)) = 1.0 / a.z;
-                    *d_mat.get_unchecked_mut((v_index, 2)) = -a.y / (a.z * a.z);
-                }
+                let d_mat = na::Matrix2x3::<f64>::new(
+                    1.0 / a.z, 0.0, -a.x / (a.z * a.z),
+                    0.0, 1.0 / a.z, -a.y / (a.z * a.z),
+                );
+                let translation_jacobian = d_mat * camera_mat;
+                ans.fixed_view_mut::<2, 3>(u_index, 0)
+                    .copy_from(&translation_jacobian);
+                let local_rotation_jacobian = rotation_jacobian(&rotation, &local_position.coords);
+                ans.fixed_view_mut::<2, 3>(u_index, 3)
+                    .copy_from(&(translation_jacobian * local_rotation_jacobian));
             }
         }
-        Ok(d_mat * camera_mat)
+        Ok(ans)
     }
 
     /// Calculate the covariance matrix of the detection result.
@@ -375,7 +380,7 @@ impl<'a> TaggedObjectLocator<'a> {
         detections: D,
         location: na::Isometry3<f64>,
         detection_variance: (f64, f64),
-    ) -> Result<na::Matrix3<f64>, Box<dyn std::error::Error>> {
+    ) -> Result<na::Matrix6<f64>, Box<dyn std::error::Error>> {
         let jacobian = Self::calculate_projection_jacobian(camera_mat, detections, location)?;
         let iter = [detection_variance.0, detection_variance.1]
             .into_iter()
