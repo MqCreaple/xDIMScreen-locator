@@ -55,14 +55,15 @@ impl<'a> VisualizeChart<'a> {
             .pitch(0.7)
             .yaw(0.7)
             .builder_cb(Box::new(move |area, transform, data| {
-                let x_axis = -5..=5;
-                let y_axis = -5..=5;
-                let z_axis = -5..=5;
+                let x_axis = -5.0..5.0;
+                let y_axis = -5.0..5.0;
+                let z_axis = -5.0..5.0;
                 let mut chart = ChartBuilder::on(&area)
+                    .caption("Located Objects", ("sans-serif", 16))
                     .build_cartesian_3d(
-                        to_f64_range(&x_axis),
-                        to_f64_range(&y_axis),
-                        to_f64_range(&z_axis),
+                        x_axis.clone(),
+                        y_axis.clone(),
+                        z_axis.clone(),
                     )
                     .unwrap();
                 chart.with_projection(|mut pb| {
@@ -102,10 +103,14 @@ impl<'a> VisualizeChart<'a> {
                         )
                         .unwrap();
                         let cov_mat = cov_mat.try_inverse().unwrap();
+                        let a = cov_mat.fixed_view::<3, 3>(0, 0).clone_owned();
+                        let b = cov_mat.fixed_view::<3, 3>(0, 3).clone_owned();
+                        let bt = cov_mat.fixed_view::<3, 3>(3, 0).clone_owned();
+                        let c = cov_mat.fixed_view::<3, 3>(3, 3).clone_owned();
                         Self::plot_ellipsoid(
                             &mut chart,
                             loc.translation.vector,
-                            cov_mat.fixed_view::<3, 3>(0, 0).clone_owned(),
+                            a - b * c.try_inverse().unwrap() * bt,
                             ellipsoid_scale,
                             64,
                             &BLACK,
@@ -120,14 +125,15 @@ impl<'a> VisualizeChart<'a> {
             .pitch(0.7)
             .yaw(0.7)
             .builder_cb(Box::new(move |area, transform, data| {
-                let x_axis = -3..=3;
-                let y_axis = -3..=3;
-                let z_axis = -3..=3;
+                let x_axis = -3.5..3.5;
+                let y_axis = -3.5..3.5;
+                let z_axis = -3.5..3.5;
                 let mut chart = ChartBuilder::on(&area)
+                    .caption("Axis Angles", ("sans-serif", 16))
                     .build_cartesian_3d(
-                        to_f64_range(&x_axis),
-                        to_f64_range(&y_axis),
-                        to_f64_range(&z_axis),
+                        x_axis.clone(),
+                        y_axis.clone(),
+                        z_axis.clone(),
                     )
                     .unwrap();
                 chart.with_projection(|mut pb| {
@@ -137,6 +143,16 @@ impl<'a> VisualizeChart<'a> {
                     pb.into_matrix()
                 });
                 Self::plot_axes(&mut chart, x_axis, y_axis, z_axis);
+
+                // plot the sphere of radius PI, indicating the range of axis angles
+                Self::plot_ellipsoid(
+                    &mut chart,
+                    na::Vector3::default(),
+                    na::Matrix3::identity(),
+                    f64::consts::PI,
+                    64,
+                    &BLACK,
+                ).unwrap();
 
                 // plot the axis angle of all objects
                 let located_objects_lock = data.0.lock().unwrap();
@@ -154,10 +170,14 @@ impl<'a> VisualizeChart<'a> {
                         )
                         .unwrap();
                         let cov_mat = cov_mat.try_inverse().unwrap();
+                        let a = cov_mat.fixed_view::<3, 3>(0, 0).clone_owned();
+                        let b = cov_mat.fixed_view::<3, 3>(0, 3).clone_owned();
+                        let bt = cov_mat.fixed_view::<3, 3>(3, 0).clone_owned();
+                        let c = cov_mat.fixed_view::<3, 3>(3, 3).clone_owned();
                         Self::plot_ellipsoid(
                             &mut chart,
                             axis_angle,
-                            cov_mat.fixed_view::<3, 3>(0, 0).clone_owned(),
+                            c - bt * a.try_inverse().unwrap() * b,
                             ellipsoid_scale,
                             64,
                             &color,
@@ -171,24 +191,30 @@ impl<'a> VisualizeChart<'a> {
 
     fn plot_axes(
         chart: &mut ChartContext<'_, EguiBackend<'_>, Cartesian3d<RangedCoordf64, RangedCoordf64, RangedCoordf64>>,
-        x_axis: RangeInclusive<i32>,
-        y_axis: RangeInclusive<i32>,
-        z_axis: RangeInclusive<i32>,
+        x_axis: Range<f64>,
+        y_axis: Range<f64>,
+        z_axis: Range<f64>,
     ) {
 
         chart
-            .draw_series(LineSeries::new(x_axis.map(|x| (x.as_f64(), 0., 0.)), &RED))
+            .draw_series(LineSeries::new(
+                [(x_axis.start, 0., 0.), (x_axis.end, 0., 0.)],
+                &RED,
+            ))
             .unwrap()
             .label("x axis");
         chart
             .draw_series(LineSeries::new(
-                y_axis.map(|y| (0., y.as_f64(), 0.)),
+                [(0., y_axis.start, 0.), (0., y_axis.end, 0.)],
                 &GREEN,
             ))
             .unwrap()
             .label("y axis");
         chart
-            .draw_series(LineSeries::new(z_axis.map(|z| (0., 0., z.as_f64())), &BLUE))
+            .draw_series(LineSeries::new(
+                [(0., 0., z_axis.start), (0., 0., z_axis.end)],
+                &BLUE,
+            ))
             .unwrap()
             .label("z axis");
     }
@@ -228,7 +254,7 @@ impl<'a> VisualizeChart<'a> {
             let val2 = unsafe { *eigen.eigenvalues.get_unchecked(j) };
             let sqrtval2 = val2.sqrt();
             chart.draw_series(LineSeries::new(
-                (0..resolution).map(|t| {
+                (0..(resolution + 1)).map(|t| {
                     let t1 = (t as f64) * dt;
                     let vec = center
                         + vec1 * scale / sqrtval1 * t1.cos()
@@ -250,13 +276,15 @@ impl<'a> VisualizeChart<'a> {
 
 impl<'a> eframe::App for VisualizeChart<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        CentralPanel::default().show(ctx, |ui| {
-            self.main_chart.draw(ui);
-        });
         SidePanel::right("axis_angle_panel")
         .resizable(true)
         .show(ctx, |ui| {
+            ui.separator();
             self.axis_angle_chart.draw(ui);
+        });
+        CentralPanel::default()
+        .show(ctx, |ui| {
+            self.main_chart.draw(ui);
         });
 
         thread::sleep(Duration::from_secs_f64(1.0 / self.fps));
