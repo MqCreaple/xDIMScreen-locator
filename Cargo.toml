@@ -1,20 +1,20 @@
 [package]
 name = "xDIMScreen_locator"
-version = "0.1.1"
+version = "0.1.2"
 description = "Locate objects with apriltags."
 authors = [ "MqCreaple <gmq14159@gmail.com>" ]
 edition = "2024"
 repository = "https://github.com/MqCreaple/xDIMScreen-locator"
 
 [dependencies]
-chrono = "0.4.41"
-clap = { version = "4.5.46", features = ["derive"] }
-eframe = "0.32.1"
-egui = "0.32.1"
-egui-plotter = "0.4.0"
+chrono = "0.4.42"
+clap = { version = "4.5.47", features = ["derive"] }
+eframe = "0.32.2"
+egui = "0.32.2"
+egui-plotter = { git = "https://github.com/MqCreaple/egui-plotter" }
 env_logger = "0.11.8"
 libc = "0.2.175"
-log = "0.4.27"
+log = "0.4.28"
 map-macro = "0.3.0"
 nalgebra = "0.34.0"
 opencv = { version = "0.95.1", default-features = false, features = ["clang-runtime", "calib3d", "imgcodecs", "imgproc", "highgui", "videoio"] }
@@ -25,13 +25,10 @@ serde_json = "1.0.143"
 statrs = "0.18.0"
 
 [build-dependencies]
-bindgen = "0.72.0"
+bindgen = "0.72.1"
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports"] }
-
-[patch.crates-io]
-egui-plotter = { git = "https://github.com/MqCreaple/egui-plotter" }
 
 [features]
 visualize = []
