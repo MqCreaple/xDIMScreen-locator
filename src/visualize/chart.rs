@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ops::{Range, RangeInclusive};
+use std::ops::Range;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 use std::{f64, thread};
@@ -26,10 +26,6 @@ pub struct VisualizeChart<'a> {
     main_chart: Chart<Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>>,
     axis_angle_chart: Chart<Arc<(Mutex<locator::LocatedObjects<'a>>, Condvar)>>,
     fps: f64,
-}
-
-fn to_f64_range(range: &RangeInclusive<i32>) -> Range<f64> {
-    range.start().as_f64()..range.end().as_f64()
 }
 
 impl<'a> VisualizeChart<'a> {
