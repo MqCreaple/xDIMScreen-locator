@@ -7,22 +7,15 @@ pub fn rotation_jacobian(r: &na::Rotation3<f64>, v: &na::Vector3<f64>) -> na::Ma
     let theta = r.angle();
     let omega = r.scaled_axis();
     let omega_hat = na::Matrix3::new(
-        0.0, -omega.z, omega.y,
-        omega.z, 0.0, -omega.x,
-        -omega.y, omega.x, 0.0,
+        0.0, -omega.z, omega.y, omega.z, 0.0, -omega.x, -omega.y, omega.x, 0.0,
     );
     let right_jacobian = if theta < 1e-10 {
         na::Matrix3::identity()
     } else {
-        na::Matrix3::identity()
-            - ((1.0 - theta.cos()) / (theta * theta)) * omega_hat
+        na::Matrix3::identity() - ((1.0 - theta.cos()) / (theta * theta)) * omega_hat
             + ((theta - theta.sin()) / (theta * theta * theta)) * omega_hat * omega_hat
     };
-    let v_hat = na::Matrix3::new(
-        0.0, -v.z, v.y,
-        v.z, 0.0, -v.x,
-        -v.y, v.x, 0.0,
-    );
+    let v_hat = na::Matrix3::new(0.0, -v.z, v.y, v.z, 0.0, -v.x, -v.y, v.x, 0.0);
     -r.matrix() * v_hat * right_jacobian
 }
 
@@ -46,8 +39,17 @@ mod tests {
             let rv2 = r2.transform_vector(&v);
             let numerical_diff = (rv1 - rv2) / (2.0 * EPS);
             let analytical_jacobian = jacobian * d_omega;
-            println!("Numerical: {:?}, Analytical: {:?}", numerical_diff, analytical_jacobian);
-            assert!((numerical_diff - analytical_jacobian).norm() < 1e-6, "Failed for d_omega = {:?}. Numerical: {:?}, Analytical: {:?}", d_omega, numerical_diff, analytical_jacobian);
+            println!(
+                "Numerical: {:?}, Analytical: {:?}",
+                numerical_diff, analytical_jacobian
+            );
+            assert!(
+                (numerical_diff - analytical_jacobian).norm() < 1e-6,
+                "Failed for d_omega = {:?}. Numerical: {:?}, Analytical: {:?}",
+                d_omega,
+                numerical_diff,
+                analytical_jacobian
+            );
         }
     }
 

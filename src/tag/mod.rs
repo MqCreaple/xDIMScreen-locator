@@ -84,7 +84,12 @@ pub fn locator_thread_main<'a>(
                         &mut shared_frame_mat,
                         core::Point::new(start_pt.x.round() as i32, start_pt.y.round() as i32),
                         core::Point::new(end_pt.x.round() as i32, end_pt.y.round() as i32),
-                        core::Scalar::new(45., 44., 233., 0.),
+                        core::Scalar::new(
+                            if i != 0 { 255. } else { 0. },
+                            if i != 1 { 255. } else { 0. },
+                            if i != 2 { 255. } else { 0. },
+                            0.,
+                        ),
                         2,
                         imgproc::LINE_8,
                         0,

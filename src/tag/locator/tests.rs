@@ -10,12 +10,16 @@ use crate::tag::apriltag::{
 
 use super::*;
 
-fn project_tag(ret: &mut na::DVector<f64>, object_location: &na::Isometry3<f64>, object: &TaggedObject, camera_mat: &na::Matrix3<f64>) {
+fn project_tag(
+    ret: &mut na::DVector<f64>,
+    object_location: &na::Isometry3<f64>,
+    object: &TaggedObject,
+    camera_mat: &na::Matrix3<f64>,
+) {
     for (j, (_, tag_location)) in object.tags.iter().enumerate() {
         for k in 0..4 {
             let point = camera_mat
-                * object_location
-                    .transform_point(&tag_location.0.transform_point(&TAG_CORNERS[k]));
+                * object_location.transform_point(&tag_location.0.transform_point(&TAG_CORNERS[k]));
             ret[j * 8 + k * 2] = point.x / point.z;
             ret[j * 8 + k * 2 + 1] = point.y / point.z;
         }
@@ -141,11 +145,15 @@ fn test_projection_jacobian() {
         {
             // measure rotations
             let mut object_location_1 = object_location.clone();
-            object_location_1.rotation = na::UnitQuaternion::from_scaled_axis(object_location_1.rotation.scaled_axis() - rotate);
+            object_location_1.rotation = na::UnitQuaternion::from_scaled_axis(
+                object_location_1.rotation.scaled_axis() - rotate,
+            );
             let mut vec1 = na::DVector::zeros(calculated_projection_jacobian.nrows());
             project_tag(&mut vec1, &object_location_1, &object, &camera_mat);
             let mut object_location_2 = object_location.clone();
-            object_location_2.rotation = na::UnitQuaternion::from_scaled_axis(object_location_2.rotation.scaled_axis() + rotate);
+            object_location_2.rotation = na::UnitQuaternion::from_scaled_axis(
+                object_location_2.rotation.scaled_axis() + rotate,
+            );
             let mut vec2 = na::DVector::zeros(calculated_projection_jacobian.nrows());
             project_tag(&mut vec2, &object_location_2, &object, &camera_mat);
             let diff = (vec2 - vec1) / (2.0 * EPS);

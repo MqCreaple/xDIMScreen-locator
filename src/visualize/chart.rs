@@ -56,11 +56,7 @@ impl<'a> VisualizeChart<'a> {
                 let z_axis = -5.0..5.0;
                 let mut chart = ChartBuilder::on(&area)
                     .caption("Located Objects", ("sans-serif", 16))
-                    .build_cartesian_3d(
-                        x_axis.clone(),
-                        y_axis.clone(),
-                        z_axis.clone(),
-                    )
+                    .build_cartesian_3d(x_axis.clone(), y_axis.clone(), z_axis.clone())
                     .unwrap();
                 chart.with_projection(|mut pb| {
                     pb.yaw = transform.yaw;
@@ -126,11 +122,7 @@ impl<'a> VisualizeChart<'a> {
                 let z_axis = -3.5..3.5;
                 let mut chart = ChartBuilder::on(&area)
                     .caption("Axis Angles", ("sans-serif", 16))
-                    .build_cartesian_3d(
-                        x_axis.clone(),
-                        y_axis.clone(),
-                        z_axis.clone(),
-                    )
+                    .build_cartesian_3d(x_axis.clone(), y_axis.clone(), z_axis.clone())
                     .unwrap();
                 chart.with_projection(|mut pb| {
                     pb.yaw = transform.yaw;
@@ -148,7 +140,8 @@ impl<'a> VisualizeChart<'a> {
                     f64::consts::PI,
                     64,
                     &BLACK,
-                ).unwrap();
+                )
+                .unwrap();
 
                 // plot the axis angle of all objects
                 let located_objects_lock = data.0.lock().unwrap();
@@ -156,7 +149,12 @@ impl<'a> VisualizeChart<'a> {
                     if let Some(object) = object_map.get(*name) {
                         let color = generate_random_color(name);
                         let axis_angle = loc.rotation.scaled_axis();
-                        chart.draw_series(LineSeries::new([(0.0, 0.0, 0.0), (axis_angle.x, axis_angle.y, axis_angle.z)], &color)).unwrap();
+                        chart
+                            .draw_series(LineSeries::new(
+                                [(0.0, 0.0, 0.0), (axis_angle.x, axis_angle.y, axis_angle.z)],
+                                &color,
+                            ))
+                            .unwrap();
                         // draw an ellipsoid to represent the covariance
                         let cov_mat = TaggedObjectLocator::calculate_covariance(
                             camera.camera_mat_na().unwrap(),
@@ -182,16 +180,23 @@ impl<'a> VisualizeChart<'a> {
                     }
                 }
             }));
-        Self { main_chart, axis_angle_chart, fps }
+        Self {
+            main_chart,
+            axis_angle_chart,
+            fps,
+        }
     }
 
     fn plot_axes(
-        chart: &mut ChartContext<'_, EguiBackend<'_>, Cartesian3d<RangedCoordf64, RangedCoordf64, RangedCoordf64>>,
+        chart: &mut ChartContext<
+            '_,
+            EguiBackend<'_>,
+            Cartesian3d<RangedCoordf64, RangedCoordf64, RangedCoordf64>,
+        >,
         x_axis: Range<f64>,
         y_axis: Range<f64>,
         z_axis: Range<f64>,
     ) {
-
         chart
             .draw_series(LineSeries::new(
                 [(x_axis.start, 0., 0.), (x_axis.end, 0., 0.)],
@@ -273,13 +278,12 @@ impl<'a> VisualizeChart<'a> {
 impl<'a> eframe::App for VisualizeChart<'a> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         SidePanel::right("axis_angle_panel")
-        .resizable(true)
-        .show(ctx, |ui| {
-            ui.separator();
-            self.axis_angle_chart.draw(ui);
-        });
-        CentralPanel::default()
-        .show(ctx, |ui| {
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.separator();
+                self.axis_angle_chart.draw(ui);
+            });
+        CentralPanel::default().show(ctx, |ui| {
             self.main_chart.draw(ui);
         });
 

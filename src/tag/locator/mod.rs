@@ -164,16 +164,16 @@ impl<'a> TaggedObjectLocator<'a> {
 
         let rvec = unsafe {
             na::Vector3::new(
-                *rvec.at_unchecked::<f64>(0)?,
-                *rvec.at_unchecked::<f64>(1)?,
-                *rvec.at_unchecked::<f64>(2)?,
+                *rvec.at_unchecked::<f64>(0),
+                *rvec.at_unchecked::<f64>(1),
+                *rvec.at_unchecked::<f64>(2),
             )
         };
         let tvec = unsafe {
             na::Vector3::new(
-                *tvec.at_unchecked::<f64>(0)?,
-                *tvec.at_unchecked::<f64>(1)?,
-                *tvec.at_unchecked::<f64>(2)?,
+                *tvec.at_unchecked::<f64>(0),
+                *tvec.at_unchecked::<f64>(1),
+                *tvec.at_unchecked::<f64>(2),
             )
         };
         Ok(na::Isometry3::new(tvec, rvec))
@@ -256,16 +256,16 @@ impl<'a> TaggedObjectLocator<'a> {
 
         let rvec_na = unsafe {
             na::Vector3::new(
-                *rvec.at_unchecked::<f64>(0)?,
-                *rvec.at_unchecked::<f64>(1)?,
-                *rvec.at_unchecked::<f64>(2)?,
+                *rvec.at_unchecked::<f64>(0),
+                *rvec.at_unchecked::<f64>(1),
+                *rvec.at_unchecked::<f64>(2),
             )
         };
         let tvec_na = unsafe {
             na::Vector3::new(
-                *tvec.at_unchecked::<f64>(0)?,
-                *tvec.at_unchecked::<f64>(1)?,
-                *tvec.at_unchecked::<f64>(2)?,
+                *tvec.at_unchecked::<f64>(0),
+                *tvec.at_unchecked::<f64>(1),
+                *tvec.at_unchecked::<f64>(2),
             )
         };
 
@@ -352,8 +352,12 @@ impl<'a> TaggedObjectLocator<'a> {
                 let local_position = tag_loc.0.transform_point(&corner);
                 let a = camera_mat * location.transform_point(&local_position);
                 let d_mat = na::Matrix2x3::<f64>::new(
-                    1.0 / a.z, 0.0, -a.x / (a.z * a.z),
-                    0.0, 1.0 / a.z, -a.y / (a.z * a.z),
+                    1.0 / a.z,
+                    0.0,
+                    -a.x / (a.z * a.z),
+                    0.0,
+                    1.0 / a.z,
+                    -a.y / (a.z * a.z),
                 );
                 let translation_jacobian = d_mat * camera_mat;
                 ans.fixed_view_mut::<2, 3>(u_index, 0)

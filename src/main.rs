@@ -81,6 +81,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         ),
         None,
     )?;
+    log::info!("Camera matrix: {}", camera_prop.camera_mat_na().unwrap());
     let mut cam = videoio::VideoCapture::new(args.cam_id, videoio::CAP_ANY)?;
     cam.set(
         videoio::CAP_PROP_FRAME_WIDTH,

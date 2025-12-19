@@ -41,7 +41,7 @@ fn test_locator_simple_tag() {
             [950.0 - 0.5, 550.0 - 0.5],
             [970.0 - 0.5, 550.0 - 0.5],
             [970.0 - 0.5, 530.0 - 0.5],
-            [950.0 - 0.5, 530.0 - 0.5],  // move -0.5 pixels to make the center exactly (960, 540)
+            [950.0 - 0.5, 530.0 - 0.5], // move -0.5 pixels to make the center exactly (960, 540)
         ];
     }
     let detection = unsafe { ApriltagDetection::new_from_raw(detection_raw) };
@@ -59,15 +59,43 @@ fn test_locator_simple_tag() {
     const EPS: f64 = 1e-5;
     // 'simple' should not have any rotation
     println!("Rotation: {:?}", simple_tag_location.rotation);
-    assert!(f64::abs(simple_tag_location.rotation.i) <= EPS, "Rotation i is not zero. Value: {}", simple_tag_location.rotation.i);
-    assert!(f64::abs(simple_tag_location.rotation.j) <= EPS, "Rotation j is not zero. Value: {}", simple_tag_location.rotation.j);
-    assert!(f64::abs(simple_tag_location.rotation.k) <= EPS, "Rotation k is not zero. Value: {}", simple_tag_location.rotation.k);
-    assert!(f64::abs(simple_tag_location.rotation.w - 1.0) <= EPS, "Rotation w is not one. Value: {}", simple_tag_location.rotation.w);
+    assert!(
+        f64::abs(simple_tag_location.rotation.i) <= EPS,
+        "Rotation i is not zero. Value: {}",
+        simple_tag_location.rotation.i
+    );
+    assert!(
+        f64::abs(simple_tag_location.rotation.j) <= EPS,
+        "Rotation j is not zero. Value: {}",
+        simple_tag_location.rotation.j
+    );
+    assert!(
+        f64::abs(simple_tag_location.rotation.k) <= EPS,
+        "Rotation k is not zero. Value: {}",
+        simple_tag_location.rotation.k
+    );
+    assert!(
+        f64::abs(simple_tag_location.rotation.w - 1.0) <= EPS,
+        "Rotation w is not one. Value: {}",
+        simple_tag_location.rotation.w
+    );
 
     // 'simple' should not have any translation on x or y direction
     println!("Translation: {:?}", simple_tag_location.translation);
-    assert!(f64::abs(simple_tag_location.translation.x) <= EPS, "Translation x is not zero. Value: {}", simple_tag_location.translation.x);
-    assert!(f64::abs(simple_tag_location.translation.y) <= EPS, "Translation y is not zero. Value: {}", simple_tag_location.translation.y);
+    assert!(
+        f64::abs(simple_tag_location.translation.x) <= EPS,
+        "Translation x is not zero. Value: {}",
+        simple_tag_location.translation.x
+    );
+    assert!(
+        f64::abs(simple_tag_location.translation.y) <= EPS,
+        "Translation y is not zero. Value: {}",
+        simple_tag_location.translation.y
+    );
     // the distance (z translation) of 'simple' from the camera should be approximately 57.85 unit
-    assert!(f64::abs(simple_tag_location.translation.z - 57.85) <= 0.01, "Translation z is not approximately 57.85. Value: {}", simple_tag_location.translation.z);
+    assert!(
+        f64::abs(simple_tag_location.translation.z - 57.85) <= 0.01,
+        "Translation z is not approximately 57.85. Value: {}",
+        simple_tag_location.translation.z
+    );
 }

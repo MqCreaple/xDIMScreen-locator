@@ -8,27 +8,27 @@ repository = "https://github.com/MqCreaple/xDIMScreen-locator"
 
 [dependencies]
 chrono = "0.4.42"
-clap = { version = "4.5.47", features = ["derive"] }
-eframe = "0.32.2"
-egui = "0.32.2"
+clap = { version = "4.5.53", features = ["derive"] }
+eframe = "0.33"
+egui = "0.33"
 egui-plotter = { git = "https://github.com/MqCreaple/egui-plotter" }
 env_logger = "0.11.8"
-libc = "0.2.175"
-log = "0.4.28"
+libc = "0.2.178"
+log = "0.4.29"
 map-macro = "0.3.0"
-nalgebra = "0.34.0"
-opencv = { version = "0.95.1", default-features = false, features = ["clang-runtime", "calib3d", "imgcodecs", "imgproc", "highgui", "videoio"] }
+nalgebra = "0.34.1"
+opencv = { version = "0.98", default-features = false, features = ["clang-runtime", "calib3d", "imgcodecs", "imgproc", "highgui", "videoio"] }
 plotters = "0.3.7"
 rand = "0.9.2"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.143"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 statrs = "0.18.0"
 
 [build-dependencies]
 bindgen = "0.72.1"
 
 [dev-dependencies]
-criterion = { version = "0.7", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [features]
 visualize = []
