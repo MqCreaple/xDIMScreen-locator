@@ -1,3 +1,4 @@
 /target
 /.cargo
 /benchmark-results
+/.venv

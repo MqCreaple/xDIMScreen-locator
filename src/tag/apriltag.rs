@@ -54,6 +54,14 @@ impl TryFrom<&str> for ApriltagFamily {
     }
 }
 
+impl TryFrom<*const apriltag_family_t> for ApriltagFamily {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(value: *const apriltag_family_t) -> Result<Self, Self::Error> {
+        Ok(unsafe { std::ffi::CStr::from_ptr((*value).name) }.to_str()?.try_into()?)
+    }
+}
+
 /// A wrapper of the C type `apriltag_family_t` that supports memory allocation and deallocation
 pub struct ApriltagFamilyType {
     pub c_type: *mut apriltag_binding::apriltag_family_t,
@@ -160,15 +168,15 @@ impl ApriltagDetection {
         unsafe {
             let homography = (*self.0).H;
             na::Matrix3::new(
-                apriltag_binding::matd_get(homography, 0, 0),
-                apriltag_binding::matd_get(homography, 0, 1),
-                apriltag_binding::matd_get(homography, 0, 2),
-                apriltag_binding::matd_get(homography, 1, 0),
-                apriltag_binding::matd_get(homography, 1, 1),
-                apriltag_binding::matd_get(homography, 1, 2),
-                apriltag_binding::matd_get(homography, 2, 0),
-                apriltag_binding::matd_get(homography, 2, 1),
-                apriltag_binding::matd_get(homography, 2, 2),
+                matd_get(homography, 0, 0),
+                matd_get(homography, 0, 1),
+                matd_get(homography, 0, 2),
+                matd_get(homography, 1, 0),
+                matd_get(homography, 1, 1),
+                matd_get(homography, 1, 2),
+                matd_get(homography, 2, 0),
+                matd_get(homography, 2, 1),
+                matd_get(homography, 2, 2),
             )
         }
     }
@@ -187,6 +195,23 @@ impl Drop for ApriltagDetection {
         unsafe {
             apriltag_detection_destroy(self.0);
         }
+    }
+}
+
+impl Debug for ApriltagDetection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let self_deref = unsafe { self.0.as_ref().unwrap() };
+        let mut map = f.debug_struct("ApriltagDetection");
+        map.field("family", &ApriltagFamily::try_from(self_deref.family as *const apriltag_family_t));
+        map.field("id", &self_deref.id);
+        map.field("hamming", &self_deref.hamming);
+        map.field("decision_margin", &self_deref.decision_margin);
+        let h_rows = unsafe { *self_deref.H }.nrows as usize;
+        let h_cols = unsafe { *self_deref.H }.ncols as usize;
+        map.field("H", &na::DMatrix::from_row_slice(h_rows, h_cols, unsafe { std::slice::from_raw_parts((*self_deref.H).data, h_rows * h_cols) }));
+        map.field("center", &self_deref.c);
+        map.field("p", &self_deref.p);
+        map.finish()
     }
 }
 
